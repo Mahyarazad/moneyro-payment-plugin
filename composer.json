@@ -1,5 +1,15 @@
 {
-    "require": {
-        "php-di/php-di": "^7.0"
-    }
+    "name": "mhyri/moneyro-payment-plugin",
+    "autoload": {
+        "psr-4": {
+            "Mhyri\\MoneyroPaymentPlugin\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "MaahyarAzad",
+            "email": "mhyrinc@gmail.com"
+        }
+    ],
+    "require": {}
 }
