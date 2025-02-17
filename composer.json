@@ -1,5 +1,5 @@
 {
     "require": {
-        "php-di/php-di": "*"
+        "php-di/php-di": "^7.0"
     }
 }
