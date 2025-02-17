@@ -1,5 +1,5 @@
 <?php
-
+namespace MoneyroPaymentPlugin;
 use DI\Container;
 
 $container = new Container();

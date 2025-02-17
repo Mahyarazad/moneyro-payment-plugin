@@ -1,15 +1,19 @@
 {
-    "name": "mhyri/moneyro-payment-plugin",
-    "autoload": {
-        "psr-4": {
-            "Mhyri\\MoneyroPaymentPlugin\\": "src/"
-        }
-    },
-    "authors": [
-        {
-            "name": "MaahyarAzad",
-            "email": "mhyrinc@gmail.com"
-        }
-    ],
-    "require": {}
+  "name": "moneyro-payment-plugin",
+  "autoload": {
+    "psr-4": {
+      "MoneyroPaymentPlugin\\": "src/"
+    }
+  },
+  "authors": [
+    {
+      "name": "MaahyarAzad",
+      "email": "mhyrinc@gmail.com"
+    }
+  ],
+  "require": {
+    "php": ">=7.3",
+    "psr/container": "^1.1 || ^2.0",
+    "php-di/php-di": "^7.0"
+  }
 }

@@ -1,5 +1,7 @@
 <?php
 
+namespace MoneyroPaymentPlugin\gateway;
+
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }

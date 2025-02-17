@@ -1,5 +1,5 @@
 <?php
-
+namespace MoneyroPaymentPlugin;
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
