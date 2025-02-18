@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Moneyro Payment Gateway for WooCommerce
  * Description: Moneyro payment gateway for WooCommerce using the MoneyRo API.
- * Version: 2.0.0
+ * Version: 2.0.2
  * Author: Maahyar Azad
  * License: GPL2
  */
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 
 // Load the Bootstrap file
-require_once __DIR__ . '/includes/bootstrap.php';
+require_once __DIR__ . '/src/includes/bootstrap.php';
 
 // Initialize the moneyro payment gateway after plugins are loaded.
 add_action( 'plugins_loaded', 'moneyro_payment_gateway_init', 11 );
@@ -30,7 +30,7 @@ function moneyro_payment_gateway_init() {
     }
 
     // Load the payment gateway class
-    require_once plugin_dir_path( __FILE__ ) . 'includes/class-wc-moneyro-payment-gateway.php';
+    require_once plugin_dir_path( __FILE__ ) . 'src/gateway/class-wc-moneyro-payment-gateway.php';
 
     // Add the payment gateway to WooCommerce
     add_filter( 'woocommerce_payment_gateways', 'add_moneyro_payment_gateway' );

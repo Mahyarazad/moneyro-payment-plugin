@@ -1,20 +1,20 @@
 <?php
+require 'vendor/autoload.php';
 namespace MoneyroPaymentPlugin;
-use DI\Container;
+use DI\ContainerBuilder;
+use Psr\Container\ContainerInterface;
 
-$container = new Container();
+class Container {
+    private static $instance;
 
-// Register services
-$container->set(WC_Moneyro_National_ID::class, function () {
-    return new WC_Moneyro_National_ID();
-});
-
-$container->set(WC_Moneyro_UID::class, function () {
-    return new WC_Moneyro_UID();
-});
-
-$container->set(WC_Moneyro_Payment::class, function () {
-    return new WC_Moneyro_Payment();
-});
-
-return $container;
+    public static function getContainer(): ContainerInterface {
+        if (!self::$instance) {
+            $containerBuilder = new ContainerBuilder();
+            $containerBuilder->addDefinitions([
+                IWC_Moneyro_Payment::class => DI\create(WC_Moneyro_Payment::class)->constructor(DI\get(IEngine::class))
+            ]);
+            self::$instance = $containerBuilder->build();
+        }
+        return self::$instance;
+    }
+}

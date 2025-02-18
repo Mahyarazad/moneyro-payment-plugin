@@ -4,6 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+
 class WC_Moneyro_National_ID {
     public function __construct() {
         $this->logger = wc_get_logger();

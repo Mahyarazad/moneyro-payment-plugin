@@ -3,7 +3,10 @@ namespace MoneyroPaymentPlugin;
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
-
+interface IWC_Moneyro_Payment {
+    public function process_payment($order_id);
+    public function return_from_gateway();
+}
 class WC_Moneyro_Payment {
 
     public function __construct($gateway_api) {

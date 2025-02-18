@@ -13,7 +13,7 @@ class WC_Moneyro_Payment_Gateway extends WC_Payment_Gateway {
 
     public function __construct() {
         $container = require plugin_dir_path(__FILE__) . 'includes/container.php';
-        $this->payment_handler = $container->get(WC_Moneyro_Payment::class);
+        $vehicle = $container->get(IVehicle::class);
 
         $this->id                 = 'moneyro_payment_gateway';
         $this->method_title       = __( 'Moneyro Payment Gateway', 'woocommerce' );
