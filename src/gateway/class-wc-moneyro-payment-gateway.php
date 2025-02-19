@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
         public function __construct() {
             global $container;
             // Inject Services
-            $this->$payment_gateway_service = $container->get('payment_gateway_service');
+            $this->payment_gateway_service = $container->get('payment_gateway_service');
             $this->ui_service = $container->get('ui_service');
             $this->order_uid_service = $container->get('order_uid_service');
             $this->admin_field_init_service = $container->get('admin_field_init_service');
@@ -83,11 +83,11 @@ if ( ! defined( 'ABSPATH' ) ) {
                 'order'            => $this->wc_get_order( $order_id ),
                 'order_id'         => $this->wc_get_order( $order_id )
             );
-            $this->$payment_gateway_service->process_payment($payment_params);
+            $this->payment_gateway_service->process_payment($payment_params);
         }
 
         public function return_from_gateway() {
-            $this->$payment_gateway_service->return_from_gateway();
+            $this->payment_gateway_service->return_from_gateway();
         }
         
     }
