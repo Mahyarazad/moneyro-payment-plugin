@@ -1,13 +1,16 @@
 <?php
-namespace MoneyroPaymentPlugin;
+
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
 
-class WC_Moneyro_National_ID {
-    public function __construct() {
-        $this->logger = wc_get_logger();
+class UIService {
+
+    protected $logger;
+
+    public function __construct($logger) {
+        $this->logger = $logger;
     }
 
     public function enqueue_script() {
@@ -63,10 +66,15 @@ class WC_Moneyro_National_ID {
     }
 
     public function save_billing_national_id($order_id, $data) {
-        if (isset($_POST['billing_national_id'])) {
-            $national_id = sanitize_text_field($_POST['billing_national_id']);
-            $this->logger->info('saving nationalId to db ' . $national_id, ['source' => 'moneyro-log']);
-            update_post_meta($order_id, '_billing_national_id', $national_id);
+        try{
+            if (isset($_POST['billing_national_id'])) {
+                $national_id = sanitize_text_field($_POST['billing_national_id']);
+                update_post_meta($order_id, '_billing_national_id', $national_id);
+                $this->logger->info('National Id updated in database' . $national_id, ['source' => 'moneyro-log']);
+            }
+
+        }catch (Exception $e){
+            $this->logger->info('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
         }
     }
 
@@ -81,21 +89,28 @@ class WC_Moneyro_National_ID {
         return $fields;
     }
 
-    public function display_national_id_on_thank_you_page($order_id) {
-        // Get the payment UID from the order meta
-        $uid = get_post_meta($order_id, '_payment_uid', true);
+    public function display_payment_id_on_thank_you_page($order_id) {
+       try{
+            // Get the payment UID from the order meta
+            $uid = get_post_meta($order_id, '_payment_uid', true);
+            if(strlen($uid) !== 0){
+                echo '<script>
+                        document.addEventListener("DOMContentLoaded", function () {
+                            const orderDetailsList = document.querySelector(".woocommerce-order-overview.order_details");
+                            if (orderDetailsList) {
+                                const nationalIdItem = document.createElement("li");
+                                nationalIdItem.classList.add("woocommerce-order-overview__national-id");
+                                nationalIdItem.innerHTML = `Payment UID: <strong>' . esc_html($uid) . '</strong>`;
+                                orderDetailsList.appendChild(nationalIdItem);
+                            }
+                        });
+                    </script>';
+            }
 
-        echo '<script>
-                document.addEventListener("DOMContentLoaded", function () {
-                    const orderDetailsList = document.querySelector(".woocommerce-order-overview.order_details");
-                    if (orderDetailsList) {
-                        const nationalIdItem = document.createElement("li");
-                        nationalIdItem.classList.add("woocommerce-order-overview__national-id");
-                        nationalIdItem.innerHTML = `Payment UID: <strong>' . esc_html($uid) . '</strong>`;
-                        orderDetailsList.appendChild(nationalIdItem);
-                    }
-                });
-            </script>';
+        }catch (Exception $e){
+            $this->logger->info('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
+        }  
+                
     }
 }
 ?>
