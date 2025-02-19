@@ -91,21 +91,23 @@ class UIService {
 
     public function display_payment_id_on_thank_you_page($order_id) {
        try{
-            // Get the payment UID from the order meta
-            $uid = get_post_meta($order_id, '_payment_uid', true);
-            if(strlen($uid) !== 0){
-                echo '<script>
-                        document.addEventListener("DOMContentLoaded", function () {
-                            const orderDetailsList = document.querySelector(".woocommerce-order-overview.order_details");
-                            if (orderDetailsList) {
-                                const nationalIdItem = document.createElement("li");
-                                nationalIdItem.classList.add("woocommerce-order-overview__national-id");
-                                nationalIdItem.innerHTML = `Payment UID: <strong>' . esc_html($uid) . '</strong>`;
-                                orderDetailsList.appendChild(nationalIdItem);
-                            }
-                        });
-                    </script>';
-            }
+           if ('moneyro_payment_gateway' === WC()->session->get('chosen_payment_method')) {
+                // Get the payment UID from the order meta
+                $uid = get_post_meta($order_id, '_payment_uid', true);
+                if(strlen($uid) !== 0){
+                    echo '<script>
+                            document.addEventListener("DOMContentLoaded", function () {
+                                const orderDetailsList = document.querySelector(".woocommerce-order-overview.order_details");
+                                if (orderDetailsList) {
+                                    const nationalIdItem = document.createElement("li");
+                                    nationalIdItem.classList.add("woocommerce-order-overview__national-id");
+                                    nationalIdItem.innerHTML = `Payment UID: <strong>' . esc_html($uid) . '</strong>`;
+                                    orderDetailsList.appendChild(nationalIdItem);
+                                }
+                            });
+                        </script>';
+                }
+           }
 
         }catch (Exception $e){
             $this->logger->info('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);

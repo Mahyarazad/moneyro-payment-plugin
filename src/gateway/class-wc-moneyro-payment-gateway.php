@@ -61,7 +61,7 @@ class WC_Moneyro_Payment_Gateway extends WC_Payment_Gateway {
         
         add_action('woocommerce_checkout_create_order', [$this->order_uid_service, 'save_order_uid_before_validation'], 10, 2);
         
-        add_action('woocommerce_thankyou', [$this->order_uid_service, 'display_payment_id_on_thank_you_page'], 20, 1);
+        add_action('woocommerce_thankyou', [$this->ui_service, 'display_payment_id_on_thank_you_page'], 20, 1);
         
         add_action('woocommerce_order_details_after_order_table', [$this->order_uid_service, 'display_order_uid_on_account_page'], 10, 1);
         
