@@ -30,7 +30,7 @@ function moneyro_payment_gateway_init() {
     // Include necessary files
     require_once __DIR__ . '/src/includes/class-container.php';
     require_once __DIR__ . '/src/includes/class-admin-field-init.php';
-    require_once __DIR__ . '/src/includes/class-payment-service.php';
+    require_once __DIR__ . '/src/includes/class-payment-processor.php';
     require_once __DIR__ . '/src/includes/class-ui-service.php';
     require_once __DIR__ . '/src/includes/class-uid-service.php';
     require_once __DIR__ . '/src/gateway/class-wc-moneyro-payment-gateway.php';
@@ -43,7 +43,7 @@ function moneyro_payment_gateway_init() {
     // Register services in the container
     $container->set('logger', wc_get_logger());
     $container->set('admin_field_init_service', new AdminService());
-    $container->set('payment_gateway_service', new PaymentService($container->get('logger')));
+    $container->set('payment_processor', new PaymentProcessor($container->get('logger')));
     $container->set('ui_service', new UIService($container->get('logger')));
     $container->set('order_uid_service', new UIDService($container->get('logger')));
 
