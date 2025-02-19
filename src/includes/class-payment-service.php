@@ -116,7 +116,7 @@ class Payment_Service {
             $this->gateway->logger->info('token ' . $token, ['source' => 'moneyro-log']);
             $this->gateway->logger->info('billing phone ' . $order->get_billing_phone(), ['source' => 'moneyro-log']);
             $this->gateway->logger->info('total amount ' . intval($user_pay_amount * 245000), ['source' => 'moneyro-log']);
-            $this->gateway->logger->info('callback_url ' . "http://localhost/digi/wc-api/moneyro_payment_gateway?wc_order={$order_id}&status=success&payment_hash={$payment_hash}", ['source' => 'moneyro-log']);
+            $this->gateway->logger->info('callback_url ' . "http://localhost/digi/wc-api/" . MONEYRO_PAYMENT_GATEWAY_ID . "?wc_order={$order_id}&status=success&payment_hash={$payment_hash}", ['source' => 'moneyro-log']);
 
 
             $user_data = array(
@@ -127,7 +127,7 @@ class Payment_Service {
                 'user_national_code'       => $order_national_id,
                 'user_pay_amount'          => intval($user_pay_amount * 245000),
                 'user_mobile'              => $order->get_billing_phone(),
-                'callback_url'             => "http://localhost/digi/wc-api/moneyro_payment_gateway?wc_order={$order_id}&status=success&payment_hash={$payment_hash}"
+                'callback_url'             => "http://localhost/digi/wc-api/" . MONEYRO_PAYMENT_GATEWAY_ID . "?wc_order={$order_id}&status=success&payment_hash={$payment_hash}"
             );
 
             $invoice_response = wp_remote_post(

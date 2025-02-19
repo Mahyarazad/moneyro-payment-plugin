@@ -18,7 +18,7 @@ class WC_Moneyro_Payment_Gateway extends WC_Payment_Gateway {
         $this->order_uid_service = $container->get('order_uid_service');
         $this->admin_field_init_service = $container->get('admin_field_init_service');
 
-        $this->id                 = 'moneyro_payment_gateway';
+        $this->id                 = MONEYRO_PAYMENT_GATEWAY_ID;
         $this->method_title       = __('Moneyro Payment Gateway', 'woocommerce');
         $this->method_description = __('Moneyro payment gateway for WooCommerce using the MoneyRo API.', 'woocommerce');
         $this->has_fields         = false;

@@ -34,7 +34,7 @@ class UIDService {
 
     public function save_order_uid_before_validation($order, $data) {
         try{
-            if ('moneyro_payment_gateway' === WC()->session->get('chosen_payment_method')) {
+            if (MONEYRO_PAYMENT_GATEWAY_ID === WC()->session->get('chosen_payment_method')) {
                 // Generate UUID for this session
                 $uid = wp_generate_uuid4();
                 // Generate HMAC 

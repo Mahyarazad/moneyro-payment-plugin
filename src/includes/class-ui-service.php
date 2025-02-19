@@ -23,7 +23,7 @@ class UIService {
                         var selectedPaymentMethod = $('input[name="payment_method"]:checked').val();
     
                         // Check if the moneyro payment method is selected
-                        if (selectedPaymentMethod === 'moneyro_payment_gateway') {
+                        if (selectedPaymentMethod === MONEYRO_PAYMENT_GATEWAY_ID) {
                             $('#billing_national_id_field').show(); // Show National ID field
                         } else {
                             $('#billing_national_id_field').hide(); // Hide National ID field
@@ -44,7 +44,7 @@ class UIService {
     }
 
     public function validate_national_id_field($data, $errors) {
-        if ('moneyro_payment_gateway' === WC()->session->get('chosen_payment_method')) {
+        if (MONEYRO_PAYMENT_GATEWAY_ID === WC()->session->get('chosen_payment_method')) {
 
             // $national_id = $data['billing_national_id']; // Correctly reference the input field here
             $national_id = $_POST['billing_national_id'];
@@ -91,7 +91,7 @@ class UIService {
 
     public function display_payment_id_on_thank_you_page($order_id) {
        try{
-           if ('moneyro_payment_gateway' === WC()->session->get('chosen_payment_method')) {
+           if (MONEYRO_PAYMENT_GATEWAY_ID === WC()->session->get('chosen_payment_method')) {
                 // Get the payment UID from the order meta
                 $uid = get_post_meta($order_id, '_payment_uid', true);
                 if(strlen($uid) !== 0){
