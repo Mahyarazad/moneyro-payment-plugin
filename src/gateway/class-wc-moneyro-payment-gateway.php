@@ -14,7 +14,6 @@ class WC_Moneyro_Payment_Gateway extends WC_Payment_Gateway {
     public function __construct($container) {
         // Inject Services
         $this->logger = $container->get('logger');
-        $this->ui_service = $container->get('ui_service');
         $this->order_uid_service = $container->get('order_uid_service');
         $this->admin_field_init_service = $container->get('admin_field_init_service');
 
@@ -37,9 +36,11 @@ class WC_Moneyro_Payment_Gateway extends WC_Payment_Gateway {
         $this->merchant_uid    = $this->get_option('merchant_uid');
         $this->gateway_baseUrl = $this->get_option('gateway_baseUrl');
         $this->gateway_api     = $this->get_option('gateway_api');
+        $this->getrate_api     = $this->get_option('getrate_api');
 
         // Initialize Payment Service
         $this->payment_service = new Payment_Service($this);
+        $this->ui_service = new UIService($this);
 
         // Save settings in admin
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, [$this, 'process_admin_options']);
@@ -62,6 +63,7 @@ class WC_Moneyro_Payment_Gateway extends WC_Payment_Gateway {
         add_action('woocommerce_before_order_pay', [$this->order_uid_service, 'check_and_renew_payment_uid'], 10, 1);
 
         add_action('wp_footer', [$this->ui_service, 'enqueue_script'], 10, 2);
+
     }
 
     public function process_payment($order_id) {

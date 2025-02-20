@@ -7,42 +7,74 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class UIService {
 
-    protected $logger;
+    protected $gateway;
 
-    public function __construct($logger) {
-        $this->logger = $logger;
+    public function __construct($gateway) {
+        $this->gateway = $gateway;
     }
 
     public function enqueue_script() {
+        $gateway_id = MONEYRO_PAYMENT_GATEWAY_ID;
+        $getrate_api = $this->gateway->getrate_api;
+    
+        // Enqueue the script if on the checkout page
         if (is_checkout()) {
+            wp_enqueue_script(
+                'moneyro-js',
+                plugins_url('src/assets/js/moneyro.js', __FILE__), // Ensure this path is correct
+                array('jquery'),
+                null,
+                true
+            );
+    
+            // Pass PHP variables to JavaScript
+            wp_localize_script('moneyro-js', 'moneyro_vars', array(
+                'gateway_id'  => esc_js($gateway_id),
+                'getrate_api' => esc_url($getrate_api),
+            ));
+    
+            // Inline script to handle UI changes
             ?>
             <script type="text/javascript">
-                jQuery(function($){
+                jQuery(function($) {
                     // Hide the National ID field initially
                     function toggleNationalIDField() {
                         var selectedPaymentMethod = $('input[name="payment_method"]:checked').val();
     
-                        // Check if the moneyro payment method is selected
-                        if (selectedPaymentMethod === MONEYRO_PAYMENT_GATEWAY_ID) {
+                        // Check if the Moneyro payment method is selected
+                        if (selectedPaymentMethod === moneyro_vars.gateway_id) {
                             $('#billing_national_id_field').show(); // Show National ID field
                         } else {
                             $('#billing_national_id_field').hide(); // Hide National ID field
                         }
                     }
     
+                    function updateShippingCost() {
+                        var selectedPaymentMethod = $('input[name="payment_method"]:checked').val();
+                        var shippingElement = $('.woocommerce-Price-amount bdi');
+                        if (selectedPaymentMethod === moneyro_vars.gateway_id) {
+                            if (shippingElement.length) {
+                                var originalShipping = shippingElement.text();
+                                console.log(originalShipping);// Add your logic to update the shipping cost here
+                            }
+                        }
+                    }
+    
                     // Trigger the toggle function on payment method change
                     $('form.checkout').on('change', 'input[name="payment_method"]', function() {
                         toggleNationalIDField();
+                        updateShippingCost();
                     });
     
                     // Trigger the toggle function when the page loads to check the selected payment method
                     toggleNationalIDField();
+                    updateShippingCost();
                 });
             </script>
             <?php
         }
     }
-
+    
     public function validate_national_id_field($data, $errors) {
         if (MONEYRO_PAYMENT_GATEWAY_ID === WC()->session->get('chosen_payment_method')) {
 
@@ -70,11 +102,11 @@ class UIService {
             if (isset($_POST['billing_national_id'])) {
                 $national_id = sanitize_text_field($_POST['billing_national_id']);
                 update_post_meta($order_id, '_billing_national_id', $national_id);
-                $this->logger->info('National Id updated in database' . $national_id, ['source' => 'moneyro-log']);
+                $this->gateway->logger->info('National Id updated in database' . $national_id, ['source' => 'moneyro-log']);
             }
 
         }catch (Exception $e){
-            $this->logger->info('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
+            $this->gateway->logger->info('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
         }
     }
 
@@ -110,7 +142,7 @@ class UIService {
            }
 
         }catch (Exception $e){
-            $this->logger->info('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
+            $this->gateway->logger->info('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
         }  
                 
     }

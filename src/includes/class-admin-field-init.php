@@ -60,6 +60,12 @@ class AdminService{
                 'description' => __( 'Base URL for the MoneyRo API.', 'woocommerce' ),
                 'default'     => '',
             ],
+            'getrate_api' => [
+                'title'       => __( 'Rate API URL', 'woocommerce' ),
+                'type'        => 'text',
+                'description' => __( 'Base URL for the MoneyRo Rate API.', 'woocommerce' ),
+                'default'     => '',
+            ],
         ];
     }
 }
