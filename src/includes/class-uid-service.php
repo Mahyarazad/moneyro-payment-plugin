@@ -28,7 +28,7 @@ class UIDService {
                 $this->logger->info("Payment UID renewed for order {$order->get_id()}", ['source' => 'moneyro-log']);
             }
         }catch (Exception $e){
-            $this->logger->info('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
+            $this->logger->error('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
         }    
     }
 
@@ -55,7 +55,7 @@ class UIDService {
             }
                     
         }catch (Exception $e){
-            $this->logger->info('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
+            $this->logger->error('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
         } 
     }
 

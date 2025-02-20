@@ -21,7 +21,7 @@ class Payment_Service {
 
             if ($current_time > $expiration_timestamp) {
 
-                $this->gateway->logger->info('creating new uid payment '.$uid , ['source' => 'moneyro-log']);
+                $this->gateway->logger->debug('creating new uid payment '.$uid , ['source' => 'moneyro-log']);
                 // Save UUID in the order meta
 
                 $new_uid = wp_generate_uuid4();
@@ -43,7 +43,7 @@ class Payment_Service {
             $order_national_id = get_post_meta($order_id, '_billing_national_id', true);
             
             if(empty($order_national_id)){
-                $this->gateway->logger->info('National Id not found!!! ', ['source' => 'moneyro-log']);
+                $this->gateway->logger->debug('National Id not found!!! ', ['source' => 'moneyro-log']);
                 wc_add_notice('National Id not found.', 'error');
                 wc_clear_notices();
                 return;
@@ -55,7 +55,7 @@ class Payment_Service {
             $payment_hash =  get_post_meta($order_id, '_payment_hash', true);
 
             if(empty($uid)){
-                $this->gateway->logger->info('Order UID not found!!! ', ['source' => 'moneyro-log']);
+                $this->gateway->logger->debug('Order UID not found!!! ', ['source' => 'moneyro-log']);
                 wc_add_notice('Order UID not found.', 'error');
                 wc_clear_notices();
                 return;
@@ -112,11 +112,11 @@ class Payment_Service {
             // Step 1.2: Create purchase invoice
             $user_pay_amount = intval($order->get_total()); // Total order value
 
-            $this->gateway->logger->info('uid ' . $uid, ['source' => 'moneyro-log']);
-            $this->gateway->logger->info('token ' . $token, ['source' => 'moneyro-log']);
-            $this->gateway->logger->info('billing phone ' . $order->get_billing_phone(), ['source' => 'moneyro-log']);
-            $this->gateway->logger->info('total amount ' . intval($user_pay_amount * 245000), ['source' => 'moneyro-log']);
-            $this->gateway->logger->info('callback_url ' . get_site_url() . "/wc-api/" . MONEYRO_PAYMENT_GATEWAY_ID . "?wc_order={$order_id}&status=success&payment_hash={$payment_hash}", ['source' => 'moneyro-log']);
+            $this->gateway->logger->debug('uid ' . $uid, ['source' => 'moneyro-log']);
+            $this->gateway->logger->debug('token ' . $token, ['source' => 'moneyro-log']);
+            $this->gateway->logger->debug('billing phone ' . $order->get_billing_phone(), ['source' => 'moneyro-log']);
+            $this->gateway->logger->debug('total amount ' . intval($user_pay_amount * 245000), ['source' => 'moneyro-log']);
+            $this->gateway->logger->debug('callback_url ' . get_site_url() . "/wc-api/" . MONEYRO_PAYMENT_GATEWAY_ID . "?wc_order={$order_id}&status=success&payment_hash={$payment_hash}", ['source' => 'moneyro-log']);
 
 
             $user_data = array(
@@ -187,7 +187,7 @@ class Payment_Service {
                 'redirect' => $payment_url,
             );  
         }catch (Exception $e){
-            $this->gateway->logger->info('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
+            $this->gateway->logger->error('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
         }  
     }
 
@@ -231,7 +231,7 @@ class Payment_Service {
             wp_redirect(wc_get_checkout_url());
             exit;
         }catch (Exception $e){
-            $this->gateway->logger->info('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
+            $this->gateway->logger->error('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
         }  
         
     }

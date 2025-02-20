@@ -45,7 +45,7 @@ function moneyro_payment_gateway_init() {
     // Register services in the container
     $container->set('logger', wc_get_logger());
     $container->set('admin_field_init_service', new AdminService());
-    $container->set('ui_service', new UIService($container->get('logger')));
+    // $container->set('ui_service', new UIService($container->get('logger')));
     $container->set('order_uid_service', new UIDService($container->get('logger')));
 
 

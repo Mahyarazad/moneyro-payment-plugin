@@ -13,6 +13,54 @@ class UIService {
         $this->gateway = $gateway;
     }
 
+
+    public function update_shipping_cost_handler() {
+        // Log the request for debugging
+        error_log('AJAX request received.');
+    
+        // Verify the nonce
+        if (!check_ajax_referer('ajax_nonce', '_ajax_nonce', false)) {
+            error_log('Nonce verification failed.');
+            wp_send_json_error('Nonce verification failed.');
+            wp_die();
+        }
+    
+        // // Get the custom shipping amount from the AJAX request
+        // $custom_shipping_amount = isset($_POST['custom_shipping_amount']) ? floatval($_POST['custom_shipping_amount']) : 0;
+    
+        // // Log the received data
+        // error_log('Received custom shipping amount: ' . $custom_shipping_amount);
+    
+        // // Check if the shipping amount is valid
+        // if ($custom_shipping_amount > 0) {
+        //     // You can add logic to update the shipping cost here
+        //     wp_send_json_success(array('message' => 'Shipping cost updated to: ' . $custom_shipping_amount));
+        // } else {
+        //     wp_send_json_error(array('message' => 'Invalid shipping amount.'));
+        // }
+    
+        // Always exit to avoid extra output
+        wp_die();
+    } 
+    public function enqueue_custom_ajax_script() {
+        wp_enqueue_script(
+            'custom-ajax-script',
+            plugins_url('assets/js/custom-ajax.js', __DIR__), // Correct way to reference plugin files
+            array('jquery'),
+            '1.0.0',
+            true
+        );
+    
+        // Pass AJAX URL to the script
+        wp_localize_script('moneyro-js', 'moneyro_vars', array(
+            'gateway_id'  => esc_js($gateway_id),
+            'getrate_api' => esc_url($getrate_api),
+            'nonce'    => wp_create_nonce('ajax_nonce'), // Security nonce
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'cart' => WC()->cart->get_cart(),
+        ));
+    }
+
     public function enqueue_script() {
         $gateway_id = MONEYRO_PAYMENT_GATEWAY_ID;
         $getrate_api = $this->gateway->getrate_api;
@@ -21,16 +69,20 @@ class UIService {
         if (is_checkout()) {
             wp_enqueue_script(
                 'moneyro-js',
-                plugins_url('src/assets/js/moneyro.js', __FILE__), // Ensure this path is correct
+                plugins_url('assets/js/custom-ajax.js', __DIR__), // Correct way to reference plugin files
                 array('jquery'),
-                null,
+                '1.0.0',
                 true
             );
-    
+            
+
             // Pass PHP variables to JavaScript
             wp_localize_script('moneyro-js', 'moneyro_vars', array(
                 'gateway_id'  => esc_js($gateway_id),
                 'getrate_api' => esc_url($getrate_api),
+                'nonce'    => wp_create_nonce('ajax_nonce'), // Security nonce
+                'ajax_url' => admin_url('admin-ajax.php'),
+                'cart' => WC()->cart->get_cart(),
             ));
     
             // Inline script to handle UI changes
@@ -52,12 +104,62 @@ class UIService {
                     function updateShippingCost() {
                         var selectedPaymentMethod = $('input[name="payment_method"]:checked').val();
                         var shippingElement = $('.woocommerce-Price-amount bdi');
-                        if (selectedPaymentMethod === moneyro_vars.gateway_id) {
-                            if (shippingElement.length) {
-                                var originalShipping = shippingElement.text();
-                                console.log(originalShipping);// Add your logic to update the shipping cost here
+                        
+                        $.ajax({
+                            type: 'POST',
+                            url: moneyro_vars.ajax_url,
+                            data: {
+                                _ajax_nonce: moneyro_vars.nonce, // nonce
+                                action: "update_shipping_cost", // action
+                            },
+                            success: function(response) {
+                                if (response.success) {
+                                    console.log('Shipping cost updated:', response.data);
+                                    // Optionally refresh the page or update UI here
+                                    location.reload(); // Reload to see updated prices
+                                } else {
+                                    console.error('Error:', response.data.message);
+                                }
+                            },
+                            error: function(xhr, status, error) {
+                                console.error('AJAX error:', status);
                             }
+                        });
+                        
+                        if (selectedPaymentMethod === moneyro_vars.gateway_id) {
+                            var settings = {
+                                "url": moneyro_vars.getrate_api,
+                                "method": "GET",
+                                
+                            };
+                            
+                            $.ajax(settings).done(function (response) {
+
+                                var changeInRial = response.AED.when_selling_currency_to_user.change_in_rial;
+                                var shippingLabel = $(".woocommerce-shipping-totals td .woocommerce-Price-amount.amount bdi");
+                                console.log(moneyro_vars.cart);
+                                if (shippingLabel.length) {
+                                    shippingLabel.html(`${changeInRial}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
+                                }
+
+                                if ($('.moneyro-shipping-info').length === 0) {
+                                    var newRow = `
+                                        <tr class="moneyro-shipping-info">
+                                            <th>Shipping Fee in IRR</th>
+                                            <td><span class="woocommerce-Price-amount amount"><bdi>${changeInRial}&nbsp;<span class="woocommerce-Price-currencySymbol">IRR</span></bdi></span></td>
+                                        </tr>
+                                    `;
+    
+                                    // Append after the existing shipping row
+                                    $('.woocommerce-shipping-totals.shipping').after(newRow);
+                                }
+
+                            });
+                        }else{
+                            $('.moneyro-shipping-info').remove();
                         }
+
+                        
                     }
     
                     // Trigger the toggle function on payment method change
@@ -102,11 +204,11 @@ class UIService {
             if (isset($_POST['billing_national_id'])) {
                 $national_id = sanitize_text_field($_POST['billing_national_id']);
                 update_post_meta($order_id, '_billing_national_id', $national_id);
-                $this->gateway->logger->info('National Id updated in database' . $national_id, ['source' => 'moneyro-log']);
+                $this->gateway->logger->debug('National Id updated in database' . $national_id, ['source' => 'moneyro-log']);
             }
 
         }catch (Exception $e){
-            $this->gateway->logger->info('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
+            $this->gateway->logger->error('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
         }
     }
 
@@ -142,9 +244,45 @@ class UIService {
            }
 
         }catch (Exception $e){
-            $this->gateway->logger->info('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
+            $this->gateway->logger->error('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
         }  
                 
+    }
+
+    public function custom_override_shipping_cost() {
+        // Check if we are on the checkout page
+        if (is_checkout()) {
+            // Set your custom shipping amount
+            $custom_shipping_amount = 5.00; // Change this to your desired amount
+    
+            // Get current shipping rates
+            $shipping_methods = WC()->cart;
+    
+            $this->gateway->logger->debug('Shipping methods: ' . json_encode($shipping_methods), ['source' => 'moneyro-log']);
+            // Loop through each shipping method and set the cost
+            // foreach ($shipping_packages as $package_key => $package) {
+            //     foreach ($package['rates'] as $method_id => $method) {
+            //         // Check if it's the right shipping method
+            //         if ($method_id === 'flat_rate:4') {
+            //             // Instead of directly modifying, use this:
+            //             $method->cost = $custom_shipping_amount;
+            //             // Also, you might need to set the tax class if necessary
+            //             $method->taxes = []; // Or set the appropriate tax array if needed
+            //         }
+            //     }
+            // }
+        }
+    }   
+
+    function woocommerce_package_rates($rates ) {
+        
+        $discount_amount = 30; // 30%
+
+        foreach($rates as $key => $rate ) {
+            $rates[$key]->cost = $rates[$key]->cost - ( $rates[$key]->cost * ( $discount_amount/100 ) );
+        }
+
+        return $rates;
     }
 }
 ?>

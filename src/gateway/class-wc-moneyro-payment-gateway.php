@@ -62,7 +62,13 @@ class WC_Moneyro_Payment_Gateway extends WC_Payment_Gateway {
 
         add_action('woocommerce_before_order_pay', [$this->order_uid_service, 'check_and_renew_payment_uid'], 10, 1);
 
+        add_action('wp_ajax_update_shipping_cost', [$this->ui_service,'update_shipping_cost_handler']);
+        // For non-logged-in users
+        add_action('wp_ajax_nopriv_update_shipping_cost', [$this->ui_service,'update_shipping_cost_handler']); 
+
         add_action('wp_footer', [$this->ui_service, 'enqueue_script'], 10, 2);
+
+        add_action('wp_enqueue_scripts', [$this->ui_service, 'enqueue_custom_ajax_script']);
 
     }
 
@@ -73,4 +79,5 @@ class WC_Moneyro_Payment_Gateway extends WC_Payment_Gateway {
     public function return_from_gateway() {
         return $this->payment_service->return_from_gateway();
     }
+  
 }
