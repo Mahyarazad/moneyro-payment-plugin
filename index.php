@@ -17,6 +17,8 @@ function moneyro_payment_gateway_woocommerce_missing() {
     echo '<div class="error"><p><strong>Moneyro Payment Gateway</strong> requires WooCommerce to be installed and activated.</p></div>';
 }
 
+define('MONEYRO_PAYMENT_GATEWAY_ID', 'moneyro_payment_gateway');
+
 // Initialize the Moneyro Payment Gateway
 add_action('plugins_loaded', 'moneyro_payment_gateway_init', 11);
 
