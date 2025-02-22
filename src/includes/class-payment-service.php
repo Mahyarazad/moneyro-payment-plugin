@@ -74,19 +74,7 @@ class Payment_Service {
                 return;
             }
 
-            $rates_detail = json_decode( wp_remote_retrieve_body( $get_rates ), true );
-            $selling_rate = $rates_detail['AED']['when_selling_currency_to_user']['change_in_rial'];
-            $this->gateway->logger->debug('rates ' . $selling_rate, ['source' => 'moneyro-log']);
-            $total = $order->get_total();
-            $shipping_total = $order->get_shipping_total();
-
-            $this->gateway->logger->debug('total ' . $total, ['source' => 'moneyro-log']);
-            $this->gateway->logger->debug('shipping_total ' . $shipping_total, ['source' => 'moneyro-log']);
-            $new_shipping_total = $total * 0.1; 
-            $new_total          = $total + $new_shipping_total; 
-            $order->set_shipping_total( $new_shipping_total );
-            $order->set_total( $new_total );
-            $order->save();
+            $this->update_order_shipping($order, $get_rates);
             return; 
 
             $auth_response = wp_remote_post(
@@ -218,5 +206,23 @@ class Payment_Service {
         }  
     }
 
-   
+    private function update_order_shipping($order, $get_rates) {
+        $rates_detail = json_decode(wp_remote_retrieve_body($get_rates), true);
+        $selling_rate = $rates_detail['AED']['when_selling_currency_to_user']['change_in_rial'];
+    
+        $this->gateway->logger->debug('rates ' . $selling_rate, ['source' => 'moneyro-log']);
+    
+        $total = $order->get_total();
+        $shipping_total = $order->get_shipping_total();
+    
+        $this->gateway->logger->debug('total ' . $total, ['source' => 'moneyro-log']);
+        $this->gateway->logger->debug('shipping_total ' . $shipping_total, ['source' => 'moneyro-log']);
+    
+        $new_shipping_total = $total * 0.1; 
+        $new_total = $total + $new_shipping_total; 
+    
+        $order->set_shipping_total($new_shipping_total);
+        $order->set_total($new_total);
+        $order->save();
+    }  
 }
