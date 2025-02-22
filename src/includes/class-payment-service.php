@@ -196,6 +196,18 @@ class Payment_Service {
             // Remove cart
             WC()->cart->empty_cart();
 
+
+            unset($invoice_detail);
+            unset($invoice_response);
+            unset($invoice_status_code);
+            unset($user_data);
+            unset($auth_data);
+            unset($auth_detail);
+            unset($auth_response);
+            unset($payment_hash);
+            unset($token);
+            unset($order);
+
             // Return thank you page redirect
             return array(
                 'result'   => 'success',
