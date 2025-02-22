@@ -92,30 +92,31 @@ class UIService {
                                 $.ajax(settings).done(function (response) 
                                 {
                                     var selling_rate = parseInt(response.AED.when_selling_currency_to_user.change_in_rial);
-                                    var new_shipping_cost = total_cart * selling_rate * 0.1;
-                                    console.log(total_cart);
-                                    console.log(selling_rate);
-
+                                    var new_total_cart = total_cart - 11;
+                                    var new_total_cart_for_ui = Math.ceil(new_total_cart * 1.1);
+                                    
+                                    var new_shipping_cost = Math.ceil(new_total_cart * 0.1);
+                                    var new_shipping_cost_irr = new_shipping_cost * selling_rate;
 
                                     if (shippingLabel.length) {
-                                        shippingLabel.html(`${total_cart * 0.1}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
+                                        shippingLabel.html(`${new_shipping_cost}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
                                     }
                                     if (totalLabel.length) {
-                                        totalLabel.html(`${total_cart * 1.1 - 11}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
+                                        totalLabel.html(`${new_total_cart_for_ui}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
                                     }
 
                                     if ($('.moneyro-shipping-info').length === 0) {
                                         var newRow = `
                                             <tr class="moneyro-shipping-info">
                                                 <th>Shipping Fee in IRR</th>
-                                                <td><span class="woocommerce-Price-amount amount"><bdi>${formatCurrency(new_shipping_cost)}&nbsp;<span class="woocommerce-Price-currencySymbol">IRR</span></bdi></span></td>
+                                                <td><span class="woocommerce-Price-amount amount"><bdi>${formatCurrency(new_shipping_cost_irr)}&nbsp;<span class="woocommerce-Price-currencySymbol">IRR</span></bdi></span></td>
                                             </tr>`;
                                         $('.woocommerce-shipping-totals.shipping').after(newRow);
                                     }
                                     
                                 }).fail(function (jqXHR, textStatus, errorThrown) {
                                     // Handle any errors here
-                                    console.error('AJAX error:', textStatus, errorThrown);
+                                    window.alert('AJAX error:', textStatus, errorThrown);
                                 });;
                                                                 
 
