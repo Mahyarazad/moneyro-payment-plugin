@@ -33,6 +33,7 @@ function moneyro_payment_gateway_init() {
     require_once __DIR__ . '/src/includes/class-container.php';
     require_once __DIR__ . '/src/includes/class-admin-field-init.php';
     require_once __DIR__ . '/src/includes/class-payment-service.php';
+    require_once __DIR__ . '/src/includes/class-api-service.php';
     require_once __DIR__ . '/src/includes/class-ui-service.php';
     require_once __DIR__ . '/src/includes/class-uid-service.php';
     require_once __DIR__ . '/src/gateway/class-wc-moneyro-payment-gateway.php';

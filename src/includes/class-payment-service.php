@@ -14,6 +14,7 @@ class Payment_Service {
 
     public function process_payment( $order_id ) {
         try{
+
             $order = wc_get_order( $order_id );
             $current_time = time();
             $expiration_timestamp = $order->get_meta('_payment_uid_expiration_timestamp');
@@ -61,6 +62,32 @@ class Payment_Service {
                 return;
             }
 
+
+
+            $get_rates = wp_remote_get(
+                $this->gateway->getrate_api
+            );
+
+            if ( is_wp_error( $get_rates ) ) {
+                wc_add_notice('Failed to get current rates from payment server.', 'error');
+                wc_clear_notices();
+                return;
+            }
+
+            $rates_detail = json_decode( wp_remote_retrieve_body( $get_rates ), true );
+            $selling_rate = $rates_detail['AED']['when_selling_currency_to_user']['change_in_rial'];
+            $this->gateway->logger->debug('rates ' . $selling_rate, ['source' => 'moneyro-log']);
+            $total = $order->get_total();
+            $shipping_total = $order->get_shipping_total();
+
+            $this->gateway->logger->debug('total ' . $total, ['source' => 'moneyro-log']);
+            $this->gateway->logger->debug('shipping_total ' . $shipping_total, ['source' => 'moneyro-log']);
+            $new_shipping_total = $total * 0.1; 
+            $new_total          = $total + $new_shipping_total; 
+            $order->set_shipping_total( $new_shipping_total );
+            $order->set_total( $new_total );
+            $order->save();
+            return; 
 
             $auth_response = wp_remote_post(
                 "{$this->gateway->gateway_api}/login_with_password/robot_user/",
@@ -115,7 +142,7 @@ class Payment_Service {
             $this->gateway->logger->debug('uid ' . $uid, ['source' => 'moneyro-log']);
             $this->gateway->logger->debug('token ' . $token, ['source' => 'moneyro-log']);
             $this->gateway->logger->debug('billing phone ' . $order->get_billing_phone(), ['source' => 'moneyro-log']);
-            $this->gateway->logger->debug('total amount ' . intval($user_pay_amount * 245000), ['source' => 'moneyro-log']);
+            $this->gateway->logger->debug('total amount ' . intval($order->get_total() * $selling_rate), ['source' => 'moneyro-log']);
             $this->gateway->logger->debug('callback_url ' . get_site_url() . "/wc-api/" . MONEYRO_PAYMENT_GATEWAY_ID . "?wc_order={$order_id}&status=success&payment_hash={$payment_hash}", ['source' => 'moneyro-log']);
 
 
@@ -125,7 +152,7 @@ class Payment_Service {
                 'currency_symbol'          => 'TRY',
                 'currency_received_amount' => 1,
                 'user_national_code'       => $order_national_id,
-                'user_pay_amount'          => intval($user_pay_amount * 245000),
+                'user_pay_amount'          => intval($order->get_total() * $selling_rate),
                 'user_mobile'              => $order->get_billing_phone(),
                 'callback_url'             => get_site_url() . "/wc-api/" . MONEYRO_PAYMENT_GATEWAY_ID . "?wc_order={$order_id}&status=success&payment_hash={$payment_hash}"
             );
@@ -191,48 +218,5 @@ class Payment_Service {
         }  
     }
 
-    /**
-     * Handle the callback from the payment gateway.
-     */
-
-    //  http://localhost/digi/wc-api/moneyro_payment_gateway?wc_order=4129&status=success&payment_hash=751e1f03ddb1d4fddae87747a849611bced1f219f61287fd4d40a2922383c2e0
-    //  
-    public function return_from_gateway() {
-        try{
-            if (isset($_GET['wc_order']) && !empty($_GET['wc_order'])) {
-                $order_id = sanitize_text_field($_GET['wc_order']);
-                $order = wc_get_order($order_id);
-                $payment_uid = $order->get_meta('_payment_uid');
-
-
-                if ($order) {
-                    $payment_status = sanitize_text_field($_GET['status']); // Payment status from gateway
-                    $payment_hash = sanitize_text_field($_GET['payment_hash']); // Transaction ID from gateway
-                    $national_id = get_post_meta($order_id, '_billing_national_id', true);
-                    $check_hash = hash_hmac('sha256', $payment_uid, $this->hmac_secret_key);
-
-                    if ($payment_status === 'success' && $check_hash === $payment_hash) {
-                        $order->payment_complete($transaction_id);
-                        $order->add_order_note('Payment completed via MoneyRo. Transaction ID: ' . $transaction_id);
-                        wc_add_notice('Payment successful!', 'success');
-
-                    } else {
-                        $order->update_status('failed', 'Payment failed or canceled.');
-                        wc_add_notice('Payment failed. Please try again.', 'error');
-                    }
-                    wc_clear_notices();
-                    // Redirect to order confirmation page
-                    wp_redirect($this->gateway->get_return_url($order));
-                    exit;
-                }
-            }
-        
-            wc_add_notice('Order not found or invalid.', 'error');
-            wp_redirect(wc_get_checkout_url());
-            exit;
-        }catch (Exception $e){
-            $this->gateway->logger->error('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
-        }  
-        
-    }
+   
 }

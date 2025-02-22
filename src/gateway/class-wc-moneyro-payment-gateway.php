@@ -10,6 +10,7 @@ class WC_Moneyro_Payment_Gateway extends WC_Payment_Gateway {
     protected $order_uid_service;
     protected $admin_field_init_service;
     protected $payment_service;
+    protected $api_service;
 
     public function __construct($container) {
         // Inject Services
@@ -41,15 +42,20 @@ class WC_Moneyro_Payment_Gateway extends WC_Payment_Gateway {
         // Initialize Payment Service
         $this->payment_service = new Payment_Service($this);
         $this->ui_service = new UIService($this);
+        $this->api_service = new API_Service($this);
 
         // Save settings in admin
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, [$this, 'process_admin_options']);
 
-        // Register hooks with the services
-        add_action('woocommerce_api_' . strtolower($this->id), [$this->payment_service, 'return_from_gateway']);
+        // API
+        add_action('woocommerce_api_' . strtolower($this->id), [$this->api_service, 'return_from_gateway']);
 
+        add_action('woocommerce_api_moneyro_update_shipping_cost', [$this->api_service,'moneyro_update_shipping_cost_handler']);
+
+        // filters
         add_filter('woocommerce_checkout_fields', [$this->ui_service, 'add_national_id_field']);
 
+        // other actions
         add_action('woocommerce_checkout_update_order_meta', [$this->ui_service, 'save_billing_national_id'], 10, 2);
 
         add_action('woocommerce_after_checkout_validation', [$this->ui_service, 'validate_national_id_field'], 10, 2);
@@ -62,22 +68,16 @@ class WC_Moneyro_Payment_Gateway extends WC_Payment_Gateway {
 
         add_action('woocommerce_before_order_pay', [$this->order_uid_service, 'check_and_renew_payment_uid'], 10, 1);
 
-        add_action('wp_ajax_update_shipping_cost', [$this->ui_service,'update_shipping_cost_handler']);
-        // For non-logged-in users
-        add_action('wp_ajax_nopriv_update_shipping_cost', [$this->ui_service,'update_shipping_cost_handler']); 
-
         add_action('wp_footer', [$this->ui_service, 'enqueue_script'], 10, 2);
-
-        add_action('wp_enqueue_scripts', [$this->ui_service, 'enqueue_custom_ajax_script']);
-
+  
     }
-
+    
     public function process_payment($order_id) {
         return $this->payment_service->process_payment($order_id);
     }
 
     public function return_from_gateway() {
-        return $this->payment_service->return_from_gateway();
+        return $this->api_service->return_from_gateway();
     }
   
 }
