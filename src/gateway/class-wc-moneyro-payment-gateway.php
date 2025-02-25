@@ -54,7 +54,7 @@ class WC_Moneyro_Payment_Gateway extends WC_Payment_Gateway {
         add_action('woocommerce_api_moneyro_update_shipping_cost', [$this->api_service,'moneyro_update_shipping_cost_handler']);
 
         // filters
-        add_filter('woocommerce_checkout_fields', [$this->ui_service, 'add_national_id_field']);
+        add_filter('woocommerce_checkout_fields', [$this->ui_service, 'add_national_id_field']);        
         
         // other actions
         add_action('woocommerce_checkout_update_order_meta', [$this->ui_service, 'save_billing_national_id'], 10, 2);
@@ -80,7 +80,4 @@ class WC_Moneyro_Payment_Gateway extends WC_Payment_Gateway {
     public function return_from_gateway() {
         return $this->api_service->return_from_gateway();
     }
-
-
- 
 }

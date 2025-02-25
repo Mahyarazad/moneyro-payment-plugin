@@ -19,7 +19,7 @@ class UIService {
             $getrate_api = esc_url($this->getrate_api);
             $nonce       = wp_create_nonce('woocommerce-update-order-review');
             $ajax_url    = esc_url(admin_url('admin-ajax.php'));
-
+            $total = WC()->cart->total;
             $subtotal = WC()->cart->get_subtotal();
 
             // Get the total tax amount
@@ -35,14 +35,13 @@ class UIService {
                     getrate_api: "<?php echo $this->gateway->getrate_api; ?>",
                     nonce: "<?php echo $nonce; ?>",
                     ajax_url: "<?php echo $ajax_url; ?>",
-                    total_including_tax: <?php echo $total_including_tax; ?> // No quotes needed for numbers
+                    total_including_tax: <?php echo $total_including_tax; ?> ,
+                    total: <?php echo $total; ?> 
                 };
     
                 jQuery(function($) {
                         // Hide the National ID field initially
                         var total_including_tax = parseFloat(moneyro_vars.total_including_tax);
-                        // const { extensionCartUpdate } = wc.blocksCheckout;
-                        // const { processErrorResponse } = wc.wcBlocksData;
 
                         function formatCurrency(value) {
                             // Split the value into the number and currency parts
@@ -122,7 +121,7 @@ class UIService {
                                 }
 
                                 shippingLabel.html(`11&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
-                                totalLabel.html(`${total_cart}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
+                                totalLabel.html(`${moneyro_vars.total}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
                                
                             }
                         }
@@ -149,14 +148,13 @@ class UIService {
                 </script>
             <?php
 
-            unset($gateway_id, $getrate_api, $nonce, $ajax_url, $subtotal, $taxes);
+            unset($gateway_id, $getrate_api, $nonce, $ajax_url, $subtotal, $taxes, $total);
         }
     }
     
     public function validate_national_id_field($data, $errors) {
         if (MONEYRO_PAYMENT_GATEWAY_ID === WC()->session->get('chosen_payment_method')) {
 
-            // $national_id = $data['billing_national_id']; // Correctly reference the input field here
             $national_id = $_POST['billing_national_id'];
             // Check if the National ID is empty
             if (empty($national_id)) {
@@ -171,6 +169,14 @@ class UIService {
             // Check if the National ID is exactly 10 digits
             if (!empty($national_id) && !preg_match('/^\d{10}$/', $national_id)) {
                 $errors->add('billing_national_id_invalid', __('National ID must be exactly 10 digits.', 'woocommerce'));
+            }
+
+            $billing_phone = $_POST['billing_phone'];
+            // Check if the billing phone is empty
+            if (empty($billing_phone)) {
+                wc_add_notice(__('Billing Phone is a required field.', 'woocommerce'), 'error');
+            } elseif (strlen($billing_phone) !== 13 || !preg_match('/^\+989/', $billing_phone)) {
+                wc_add_notice(__('Billing Phone must start with +989 and be exactly 13 characters long.', 'woocommerce'), 'error');
             }
         }
     }
@@ -223,42 +229,6 @@ class UIService {
             $this->gateway->logger->error('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
         }  
                 
-    }
-
-    public function custom_override_shipping_cost() {
-        // Check if we are on the checkout page
-        if (is_checkout()) {
-            // Set your custom shipping amount
-            $custom_shipping_amount = 5.00; // Change this to your desired amount
-    
-            // Get current shipping rates
-            $shipping_methods = WC()->cart;
-    
-            $this->gateway->logger->debug('Shipping methods: ' . json_encode($shipping_methods), ['source' => 'moneyro-log']);
-            // Loop through each shipping method and set the cost
-            // foreach ($shipping_packages as $package_key => $package) {
-            //     foreach ($package['rates'] as $method_id => $method) {
-            //         // Check if it's the right shipping method
-            //         if ($method_id === 'flat_rate:4') {
-            //             // Instead of directly modifying, use this:
-            //             $method->cost = $custom_shipping_amount;
-            //             // Also, you might need to set the tax class if necessary
-            //             $method->taxes = []; // Or set the appropriate tax array if needed
-            //         }
-            //     }
-            // }
-        }
-    }   
-
-    function woocommerce_package_rates($rates ) {
-        
-        $discount_amount = 30; // 30%
-
-        foreach($rates as $key => $rate ) {
-            $rates[$key]->cost = $rates[$key]->cost - ( $rates[$key]->cost * ( $discount_amount/100 ) );
-        }
-
-        return $rates;
     }
 }
 ?>
