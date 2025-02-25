@@ -74,7 +74,7 @@ class Payment_Service {
                 return;
             }
 
-            $selling_rate = $this->update_order_shipping($order, $get_rates);
+            $selling_rate = $this->update_order_shipping($order_id, $get_rates);
 
 
             $auth_response = wp_remote_post(
@@ -137,10 +137,10 @@ class Payment_Service {
             $user_data = array(
                 'uid'                      => $uid,
                 'merchant_uid'             => $this->gateway->merchant_uid,
-                'currency_symbol'          => 'TRY',
-                'currency_received_amount' => 1,
+                'currency_symbol'          => 'AED',
+                'currency_received_amount' => $user_pay_amount,
                 'user_national_code'       => $order_national_id,
-                'user_pay_amount'          => intval($order->get_total() * $selling_rate),
+                'user_pay_amount'          => intval($user_pay_amount * $selling_rate),
                 'user_mobile'              => $order->get_billing_phone(),
                 'callback_url'             => get_site_url() . "/wc-api/" . MONEYRO_PAYMENT_GATEWAY_ID . "?wc_order={$order_id}&status=success&payment_hash={$payment_hash}"
             );
@@ -210,13 +210,14 @@ class Payment_Service {
         }  
     }
 
-    private function update_order_shipping($order, $get_rates) {
+    private function update_order_shipping($order_id, $get_rates) {
         $rates_detail = json_decode(wp_remote_retrieve_body($get_rates), true);
         $selling_rate = $rates_detail['AED']['when_selling_currency_to_user']['change_in_rial'];
     
         $this->gateway->logger->debug('rates ' . $selling_rate, ['source' => 'moneyro-log']);
     
        
+        $order = wc_get_order($order_id);
         $shipping_total = $order->get_shipping_total();
         $subtotal = WC()->cart->get_subtotal();
 
@@ -226,14 +227,17 @@ class Payment_Service {
         // Calculate the total including tax
         $total_including_tax = $subtotal + $taxes;
         
-        $new_shipping_total = $total_including_tax * 0.1; 
+        $new_shipping_total = $total_including_tax * ($this->gateway->margin_rate / 100); 
         $new_total = $total_including_tax + $new_shipping_total; 
         
         $this->gateway->logger->debug('new_total ' . $new_total, ['source' => 'moneyro-log']);
         $this->gateway->logger->debug('new_shipping_total ' . $new_shipping_total, ['source' => 'moneyro-log']);
+
+        
         $order->set_shipping_total($new_shipping_total);
-        $order->calculate_totals();
+        $order->set_total($new_total);
         $order->save();
+
 
         return $selling_rate;
     }  

@@ -38,6 +38,7 @@ class WC_Moneyro_Payment_Gateway extends WC_Payment_Gateway {
         $this->gateway_baseUrl = $this->get_option('gateway_baseUrl');
         $this->gateway_api     = $this->get_option('gateway_api');
         $this->getrate_api     = $this->get_option('getrate_api');
+        $this->margin_rate     = $this->get_option('margin_rate');
 
         // Initialize Payment Service
         $this->payment_service = new Payment_Service($this);

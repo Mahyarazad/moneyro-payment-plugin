@@ -24,6 +24,15 @@ class AdminService{
                 'description' => __( 'Description displayed to customers during checkout.', 'woocommerce' ),
                 'default'     => __( 'Pay securely using our custom payment gateway.', 'woocommerce' ),
             ],
+            'margin_rate' => [
+                'title'       => __( 'Margin Rate', 'woocommerce' ),
+                'type'        => 'number', 
+                'description' => __( 'Enter a margin rate as an integer. This rate will be used to calculate the shipping cost. Use a whole number, for example, 10 for 10% margin.', 'woocommerce' ),
+                'default'     => '',
+                'custom_attributes' => [
+                    'min' => '0', 
+                ],
+            ],
             'hmac_secret_key' => [
                 'title'       => __( 'HMAC Key', 'woocommerce' ),
                 'type'        => 'password',

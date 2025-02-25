@@ -30,6 +30,7 @@ class UIService {
             ?>
             <script type="text/javascript">
                 var moneyro_vars = {
+                    margin_rate: "<?php echo $this->gateway->margin_rate; ?>",
                     gateway_id: "<?php echo $this->gateway->id; ?>",
                     getrate_api: "<?php echo $this->gateway->getrate_api; ?>",
                     nonce: "<?php echo $nonce; ?>",
@@ -90,7 +91,7 @@ class UIService {
                                 {
                                     var selling_rate = parseInt(response.AED.when_selling_currency_to_user.change_in_rial);
 
-                                    var new_shipping_cost = Math.ceil(total_including_tax * 0.1);
+                                    var new_shipping_cost = Math.ceil(total_including_tax * moneyro_vars.margin_rate / 100);
                                     var new_shipping_cost_irr = new_shipping_cost * selling_rate;
                                     var new_total_cart_for_ui = Math.ceil(total_including_tax + new_shipping_cost);
 
