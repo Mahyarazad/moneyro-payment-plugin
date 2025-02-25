@@ -14,37 +14,34 @@ class UIService {
     }
 
     public function enqueue_script() {
-        $gateway_id = MONEYRO_PAYMENT_GATEWAY_ID;
-        $getrate_api = $this->gateway->getrate_api;
-        $total_cart = WC()->cart->total;
+        if (is_checkout()) {
+            $gateway_id  = esc_js($this->id);
+            $getrate_api = esc_url($this->getrate_api);
+            $nonce       = wp_create_nonce('woocommerce-update-order-review');
+            $ajax_url    = esc_url(admin_url('admin-ajax.php'));
 
-        // Enqueue the script if on the checkout page
-        
-            wp_enqueue_script(
-                'moneyro-js',
-                plugins_url('assets/js/custom-ajax.js', __DIR__), // Correct way to reference plugin files
-                array('jquery'),
-                '1.0.0',
-                true
-            );
+            $subtotal = WC()->cart->get_subtotal();
+
+            // Get the total tax amount
+            $taxes = WC()->cart->get_taxes_total();
             
-
-            // Pass PHP variables to JavaScript
-            wp_localize_script('moneyro-js', 'moneyro_vars', array(
-                'gateway_id'  => esc_js($gateway_id),
-                'getrate_api' => esc_url($getrate_api),
-                'nonce'    => wp_create_nonce('ajax_nonce'), // Security nonce
-                'ajax_url' => admin_url('admin-ajax.php'),
-                'cart' => $total_cart
-            ));
-    
-            // Inline script to handle UI changes
+            // Calculate the total including tax
+            $total_including_tax = $subtotal + $taxes;
             ?>
-                <script type="text/javascript">
-
-                    jQuery(function($) {
+            <script type="text/javascript">
+                var moneyro_vars = {
+                    gateway_id: "<?php echo $this->gateway->id; ?>",
+                    getrate_api: "<?php echo $this->gateway->getrate_api; ?>",
+                    nonce: "<?php echo $nonce; ?>",
+                    ajax_url: "<?php echo $ajax_url; ?>",
+                    total_including_tax: <?php echo $total_including_tax; ?> // No quotes needed for numbers
+                };
+    
+                jQuery(function($) {
                         // Hide the National ID field initially
-                        var total_cart = parseFloat(moneyro_vars.cart);
+                        var total_including_tax = parseFloat(moneyro_vars.total_including_tax);
+                        // const { extensionCartUpdate } = wc.blocksCheckout;
+                        // const { processErrorResponse } = wc.wcBlocksData;
 
                         function formatCurrency(value) {
                             // Split the value into the number and currency parts
@@ -92,11 +89,10 @@ class UIService {
                                 $.ajax(settings).done(function (response) 
                                 {
                                     var selling_rate = parseInt(response.AED.when_selling_currency_to_user.change_in_rial);
-                                    var new_total_cart = total_cart - 11;
-                                    var new_total_cart_for_ui = Math.ceil(new_total_cart * 1.1);
-                                    
-                                    var new_shipping_cost = Math.ceil(new_total_cart * 0.1);
+
+                                    var new_shipping_cost = Math.ceil(total_including_tax * 0.1);
                                     var new_shipping_cost_irr = new_shipping_cost * selling_rate;
+                                    var new_total_cart_for_ui = Math.ceil(total_including_tax + new_shipping_cost);
 
                                     if (shippingLabel.length) {
                                         shippingLabel.html(`${new_shipping_cost}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
@@ -118,9 +114,7 @@ class UIService {
                                     // Handle any errors here
                                     window.alert('AJAX error:', textStatus, errorThrown);
                                 });;
-                                                                
-
-                                
+  
                             }else{
                                 if ($('.moneyro-shipping-info').length) {
                                     $('.moneyro-shipping-info').remove();
@@ -141,10 +135,21 @@ class UIService {
                         
                         toggleNationalIDField();
                         updateShippingCost();
+
+                        $(document).ajaxComplete(function(event, xhr, settings) {
+                            // Check if the request was for updating the order review
+                            if (settings.url.indexOf('wc-ajax=update_order_review') !== -1) {
+                                toggleNationalIDField();
+                                updateShippingCost();
+                            }
+                        });
+
                     });
                 </script>
             <?php
-        
+
+            unset($gateway_id, $getrate_api, $nonce, $ajax_url, $subtotal, $taxes);
+        }
     }
     
     public function validate_national_id_field($data, $errors) {

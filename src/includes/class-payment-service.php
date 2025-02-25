@@ -74,8 +74,8 @@ class Payment_Service {
                 return;
             }
 
-            $this->update_order_shipping($order, $get_rates);
-            return; 
+            $selling_rate = $this->update_order_shipping($order, $get_rates);
+
 
             $auth_response = wp_remote_post(
                 "{$this->gateway->gateway_api}/login_with_password/robot_user/",
@@ -197,16 +197,8 @@ class Payment_Service {
             WC()->cart->empty_cart();
 
 
-            unset($invoice_detail);
-            unset($invoice_response);
-            unset($invoice_status_code);
-            unset($user_data);
-            unset($auth_data);
-            unset($auth_detail);
-            unset($auth_response);
-            unset($payment_hash);
-            unset($token);
-            unset($order);
+            // Unset temporary variables
+            unset($invoice_detail, $invoice_response, $invoice_status_code, $user_data, $auth_data, $auth_detail, $auth_response, $payment_hash, $token, $order_national_id);
 
             // Return thank you page redirect
             return array(
@@ -224,17 +216,25 @@ class Payment_Service {
     
         $this->gateway->logger->debug('rates ' . $selling_rate, ['source' => 'moneyro-log']);
     
-        $total = $order->get_total();
+       
         $shipping_total = $order->get_shipping_total();
-    
-        $this->gateway->logger->debug('total ' . $total, ['source' => 'moneyro-log']);
-        $this->gateway->logger->debug('shipping_total ' . $shipping_total, ['source' => 'moneyro-log']);
-    
-        $new_shipping_total = $total * 0.1; 
-        $new_total = $total + $new_shipping_total; 
-    
+        $subtotal = WC()->cart->get_subtotal();
+
+        // Get the total tax amount
+        $taxes = WC()->cart->get_taxes_total();
+        
+        // Calculate the total including tax
+        $total_including_tax = $subtotal + $taxes;
+        
+        $new_shipping_total = $total_including_tax * 0.1; 
+        $new_total = $total_including_tax + $new_shipping_total; 
+        
+        $this->gateway->logger->debug('new_total ' . $new_total, ['source' => 'moneyro-log']);
+        $this->gateway->logger->debug('new_shipping_total ' . $new_shipping_total, ['source' => 'moneyro-log']);
         $order->set_shipping_total($new_shipping_total);
-        $order->set_total($new_total);
+        $order->calculate_totals();
         $order->save();
+
+        return $selling_rate;
     }  
 }

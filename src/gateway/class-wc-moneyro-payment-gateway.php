@@ -54,22 +54,22 @@ class WC_Moneyro_Payment_Gateway extends WC_Payment_Gateway {
 
         // filters
         add_filter('woocommerce_checkout_fields', [$this->ui_service, 'add_national_id_field']);
-
+        
         // other actions
         add_action('woocommerce_checkout_update_order_meta', [$this->ui_service, 'save_billing_national_id'], 10, 2);
-
+        
         add_action('woocommerce_after_checkout_validation', [$this->ui_service, 'validate_national_id_field'], 10, 2);
-
+        
         add_action('woocommerce_checkout_create_order', [$this->order_uid_service, 'save_order_uid_before_validation'], 10, 2);
-
+        
         add_action('woocommerce_thankyou', [$this->ui_service, 'display_payment_id_on_thank_you_page'], 20, 1);
-
+        
         add_action('woocommerce_order_details_after_order_table', [$this->order_uid_service, 'display_order_uid_on_account_page'], 10, 1);
-
+        
         add_action('woocommerce_before_order_pay', [$this->order_uid_service, 'check_and_renew_payment_uid'], 10, 1);
-
+        
         add_action('wp_footer', [$this->ui_service, 'enqueue_script'], 10, 2);
-  
+        
     }
     
     public function process_payment($order_id) {
@@ -79,5 +79,7 @@ class WC_Moneyro_Payment_Gateway extends WC_Payment_Gateway {
     public function return_from_gateway() {
         return $this->api_service->return_from_gateway();
     }
-  
+
+
+ 
 }
