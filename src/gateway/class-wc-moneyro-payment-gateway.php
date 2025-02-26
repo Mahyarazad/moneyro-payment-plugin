@@ -56,6 +56,8 @@ class WC_Moneyro_Payment_Gateway extends WC_Payment_Gateway {
         // filters
         add_filter('woocommerce_checkout_fields', [$this->ui_service, 'add_national_id_field']);        
         
+        add_action('woocommerce_admin_order_data_after_shipping_address', [$this->ui_service, 'add_custom_order_data']);
+
         // other actions
         add_action('woocommerce_checkout_update_order_meta', [$this->ui_service, 'save_billing_national_id'], 10, 2);
         

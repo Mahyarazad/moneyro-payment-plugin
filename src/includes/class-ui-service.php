@@ -42,6 +42,9 @@ class UIService {
                 jQuery(function($) {
                         // Hide the National ID field initially
                         var total_including_tax = parseFloat(moneyro_vars.total_including_tax);
+                        function roundToOneDecimal(num) {
+                            return parseFloat(num.toFixed(1));
+                        }
 
                         function formatCurrency(value) {
                             // Split the value into the number and currency parts
@@ -90,9 +93,9 @@ class UIService {
                                 {
                                     var selling_rate = parseInt(response.AED.when_selling_currency_to_user.change_in_rial);
 
-                                    var new_shipping_cost = Math.ceil(total_including_tax * moneyro_vars.margin_rate / 100);
+                                    var new_shipping_cost = roundToOneDecimal(total_including_tax * (moneyro_vars.margin_rate / 100));
                                     var new_shipping_cost_irr = new_shipping_cost * selling_rate;
-                                    var new_total_cart_for_ui = Math.ceil(total_including_tax + new_shipping_cost);
+                                    var new_total_cart_for_ui = roundToOneDecimal(total_including_tax + new_shipping_cost);
 
                                     if (shippingLabel.length) {
                                         shippingLabel.html(`${new_shipping_cost}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
@@ -229,6 +232,16 @@ class UIService {
             $this->gateway->logger->error('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
         }  
                 
+    }
+
+    function add_custom_order_data($order) {
+        // $this->gateway->logger->debug('Adding custom order data' . $order, ['source' => 'moneyro-log']);
+        // ;
+        $payment_uid = $order->get_meta('_payment_uid');
+        echo '<p><strong>' . __( 'Payment Method:', 'woocommerce' ) . '</strong> ' . esc_html( $order->get_meta( '_payment_method') ) . '</p>';
+        echo '<p><strong>' . __( 'Payment UID:', 'woocommerce' ) . '</strong> ' . esc_html( $payment_uid ) . '</p>';
+        echo '<p><strong>' . __( 'Payment Invoice:', 'woocommerce' ) . '</strong> <a href="' . esc_url( $this->gateway->gateway_baseUrl . '/invoice-preview/' . $payment_uid ) . '">' . __( 'View Invoice', 'woocommerce' ) . '</a></p>';
+
     }
 }
 ?>

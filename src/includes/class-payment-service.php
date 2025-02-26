@@ -46,7 +46,7 @@ class Payment_Service {
             if(empty($order_national_id)){
                 $this->gateway->logger->debug('National Id not found!!! ', ['source' => 'moneyro-log']);
                 wc_add_notice('National Id not found.', 'error');
-                wc_clear_notices();
+                //  wc_clear_notices();
                 return;
             }
             
@@ -58,7 +58,7 @@ class Payment_Service {
             if(empty($uid)){
                 $this->gateway->logger->debug('Order UID not found!!! ', ['source' => 'moneyro-log']);
                 wc_add_notice('Order UID not found.', 'error');
-                wc_clear_notices();
+                //wc_clear_notices();
                 return;
             }
 
@@ -70,11 +70,11 @@ class Payment_Service {
 
             if ( is_wp_error( $get_rates ) ) {
                 wc_add_notice('Failed to get current rates from payment server.', 'error');
-                wc_clear_notices();
+                //wc_clear_notices();
                 return;
             }
 
-            $selling_rate = $this->update_order_shipping($order_id, $get_rates);
+            $result = $this->update_order_shipping($order_id, $get_rates);
 
 
             $auth_response = wp_remote_post(
@@ -97,7 +97,7 @@ class Payment_Service {
 
             if (is_wp_error($auth_response)) {
                 wc_add_notice('Failed to authenticate with payment server.', 'error');
-                wc_clear_notices();
+                //wc_clear_notices();
                 return;
             }
             
@@ -115,7 +115,7 @@ class Payment_Service {
 
             if ($auth_status_code === 400) {
                 wc_add_notice( $auth_detail . ' Status code: ' . $auth_status_code, 'error' );
-                wc_clear_notices();
+                //wc_clear_notices();
                 return;
             }
 
@@ -125,12 +125,15 @@ class Payment_Service {
         
 
             // Step 1.2: Create purchase invoice
-            $user_pay_amount = intval($order->get_total()); // Total order value
+
+            $user_pay_amount = $result['new_total'];
+            $selling_rate = $result['selling_rate'];
 
             $this->gateway->logger->debug('uid ' . $uid, ['source' => 'moneyro-log']);
             $this->gateway->logger->debug('token ' . $token, ['source' => 'moneyro-log']);
             $this->gateway->logger->debug('billing phone ' . $order->get_billing_phone(), ['source' => 'moneyro-log']);
-            $this->gateway->logger->debug('total amount ' . intval($order->get_total() * $selling_rate), ['source' => 'moneyro-log']);
+            $this->gateway->logger->debug('total amount ' . $user_pay_amount, ['source' => 'moneyro-log']);
+            $this->gateway->logger->debug('total amount IRR ' . intval($user_pay_amount * $selling_rate), ['source' => 'moneyro-log']);
             $this->gateway->logger->debug('callback_url ' . get_site_url() . "/wc-api/" . MONEYRO_PAYMENT_GATEWAY_ID . "?wc_order={$order_id}&status=success&payment_hash={$payment_hash}", ['source' => 'moneyro-log']);
 
 
@@ -138,9 +141,9 @@ class Payment_Service {
                 'uid'                      => $uid,
                 'merchant_uid'             => $this->gateway->merchant_uid,
                 'currency_symbol'          => 'AED',
-                'currency_received_amount' => $user_pay_amount,
+                'currency_received_amount' => round($user_pay_amount, 1),
                 'user_national_code'       => $order_national_id,
-                'user_pay_amount'          => intval($user_pay_amount * $selling_rate),
+                'user_pay_amount'          => round($user_pay_amount * $selling_rate, 1)  ,
                 'user_mobile'              => $order->get_billing_phone(),
                 'callback_url'             => get_site_url() . "/wc-api/" . MONEYRO_PAYMENT_GATEWAY_ID . "?wc_order={$order_id}&status=success&payment_hash={$payment_hash}"
             );
@@ -158,18 +161,21 @@ class Payment_Service {
             );
 
             if (is_wp_error($invoice_response)) {
+                
                 wc_add_notice('Failed to get a response from payment server.', 'error');
-                wc_clear_notices();
+                $this->gateway->logger->debug('Failed to get a response from payment server. ' . $error_messages, ['source' => 'moneyro-log']);
+                
+                //wc_clear_notices();
                 return;
             }
 
             $invoice_status_code = wp_remote_retrieve_response_code($invoice_response);
-            //$decoded_response = json_decode($invoice_response, true);
+            $invoice_body = wp_remote_retrieve_body( $invoice_response );
             
             if ($invoice_status_code !== 200) {
-                //$this->gateway->logger->error('API error: ' . $decoded_response, ['source' => 'moneyro-log']);
-                wc_add_notice('Failed to get a response from payment server. Status code: ' . $invoice_status_code, 'error');
-                wc_clear_notices();
+                $this->gateway->logger->debug('Failed to get a response from payment server. ' . $invoice_body, ['source' => 'moneyro-log']);
+                wc_add_notice('Failed to get a response from payment server. Status code: ' . $invoice_status_code . $invoice_body, 'error');
+                //wc_clear_notices();
                 return;
             }
 
@@ -178,7 +184,7 @@ class Payment_Service {
             
             if ($auth_status_code === 400) {
                 wc_add_notice( $invoice_detail . ' Status code: ' . $invoice_status_code, 'error' );
-                wc_clear_notices();
+                //wc_clear_notices();
                 return;
             }
 
@@ -186,6 +192,9 @@ class Payment_Service {
 
             // Step 2: Redirect to payment gateway
             $payment_url = "{$this->gateway->gateway_baseUrl}/invoice-preview/{$uid}/";
+            // $order->update_meta_data( '_payment_method', MONEYRO_PAYMENT_GATEWAY_ID ); // 'moneyro'
+            // $order->update_meta_data( '_payment_method_title', MONEYRO_PAYMENT_GATEWAY_ID );
+            $order->save();
 
             // Mark order as pending payment
             $order->update_status( 'pending', __( 'Awaiting payment.', 'woocommerce' ) );
@@ -195,6 +204,7 @@ class Payment_Service {
 
             // Remove cart
             WC()->cart->empty_cart();
+
 
 
             // Unset temporary variables
@@ -239,6 +249,9 @@ class Payment_Service {
         $order->save();
 
 
-        return $selling_rate;
+        return [
+            'new_total' => $new_total,
+            'selling_rate' => $selling_rate,
+        ];
     }  
 }
