@@ -30,9 +30,11 @@ class UIService {
             ?>
             <script type="text/javascript">
                 var moneyro_vars = {
-                    margin_rate: "<?php echo $this->gateway->margin_rate; ?>",
+                    shipment_margin_rate: "<?php echo $this->gateway->shipment_margin_rate; ?>",
+                    gateway_margin_rate: "<?php echo $this->gateway->gateway_margin_rate; ?>",
                     gateway_id: "<?php echo $this->gateway->id; ?>",
                     getrate_api: "<?php echo $this->gateway->getrate_api; ?>",
+                    moneyro_settings_api: "<?php echo $this->gateway->moneyro_settings_api; ?>",
                     nonce: "<?php echo $nonce; ?>",
                     ajax_url: "<?php echo $ajax_url; ?>",
                     total_including_tax: <?php echo $total_including_tax; ?> ,
@@ -79,39 +81,75 @@ class UIService {
                             var shippingLabel = $(".woocommerce-shipping-totals td .woocommerce-Price-amount.amount bdi");
                             var totalLabel = $(".order-total td .woocommerce-Price-amount.amount bdi");
                             
-                            const perecent = 10;
-                            
+                            var purchase_via_rial_initial_fee = 0;
+
                             if (selectedPaymentMethod === moneyro_vars.gateway_id) {
-                                var settings = {
+                                var rate_settings = {
                                     "url": moneyro_vars.getrate_api,
                                     "method": "GET",   
                                 };
 
+                                var gateway_settings = {
+                                    "url": moneyro_vars.moneyro_settings_api,
+                                    "method": "GET",   
+                                };
+
+                                var purchase_via_rial_initial_fee = 20000;
+                                var settings = {
+                                    "url": moneyro_vars.moneyro_settings_api,
+                                    "method": "GET",
+                                    "dataType": "json"
+                                    
+                                };
+
+                                $.ajax(settings).done(function(response) {
+                                    console.log(response);
+                                    var settings = response.results.filter(item => item.setting_key === "purchase_via_rial_initial_fee");
+                                    purchase_via_rial_initial_fee = parseInt(settings[0].setting_value);
+                                    console.log('purchase_via_rial_initial_fee', purchase_via_rial_initial_fee);
+
+                                }).fail(function(jqXHR, textStatus, errorThrown) {
+                                    console.error("Error: " + textStatus, errorThrown);
+                                });
 
 
-                                $.ajax(settings).done(function (response) 
+                                $.ajax(rate_settings).done(function (response) 
                                 {
                                     var selling_rate = parseInt(response.AED.when_selling_currency_to_user.change_in_rial);
-
-                                    var new_shipping_cost = roundToOneDecimal(total_including_tax * (moneyro_vars.margin_rate / 100));
+                                    var new_shipping_cost = total_including_tax * ((parseInt(moneyro_vars.shipment_margin_rate) + parseInt(moneyro_vars.gateway_margin_rate)) / 100);
                                     var new_shipping_cost_irr = new_shipping_cost * selling_rate;
-                                    var new_total_cart_for_ui = roundToOneDecimal(total_including_tax + new_shipping_cost);
+                                    var user_pay_amount =  Math.ceil(total_including_tax * ((parseInt(moneyro_vars.shipment_margin_rate) + parseInt(moneyro_vars.gateway_margin_rate) + 100) / 100) * selling_rate) + purchase_via_rial_initial_fee;
+
+                                    console.log('new_shipping_cost', new_shipping_cost);
+                                    console.log('total_including_tax', total_including_tax);
+                                    console.log('selling_rate', selling_rate);
+                                    console.log('user_pay_amount', user_pay_amount);
+
+                                    var user_pay_amount_for_ui = roundToOneDecimal(user_pay_amount / selling_rate);
 
                                     if (shippingLabel.length) {
-                                        shippingLabel.html(`${new_shipping_cost}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
+                                        shippingLabel.html(`${roundToOneDecimal(new_shipping_cost)}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
                                     }
                                     if (totalLabel.length) {
-                                        totalLabel.html(`${new_total_cart_for_ui}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
+                                        totalLabel.html(`${user_pay_amount_for_ui}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
                                     }
 
-                                    if ($('.moneyro-shipping-info').length === 0) {
+                                    if ($('.dgland-shipping-info').length === 0) {
                                         var newRow = `
-                                            <tr class="moneyro-shipping-info">
+                                            <tr class="dgland-shipping-info">
                                                 <th>Shipping Fee in IRR</th>
                                                 <td><span class="woocommerce-Price-amount amount"><bdi>${formatCurrency(new_shipping_cost_irr)}&nbsp;<span class="woocommerce-Price-currencySymbol">IRR</span></bdi></span></td>
                                             </tr>`;
                                         $('.woocommerce-shipping-totals.shipping').after(newRow);
                                     }
+
+                                    // if ($('.dgland-shipping-info-aed').length === 0) {
+                                    //     var include = `<div class='dgland'></br><small class="includes_tax">(includes <span class="woocommerce-Price-amount amount">
+                                    //         ${new_shipping_cost}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span></span> DGLand Fee)
+                                    //         </small></div>`;
+
+                                    //     $('.includes_tax').after(include);
+                                    // }
                                     
                                 }).fail(function (jqXHR, textStatus, errorThrown) {
                                     // Handle any errors here
@@ -122,7 +160,9 @@ class UIService {
                                 if ($('.moneyro-shipping-info').length) {
                                     $('.moneyro-shipping-info').remove();
                                 }
-
+                                if ($('.dgland-margin-info').length) {
+                                    $('.dgland-margin-info').remove();
+                                }
                                 shippingLabel.html(`11&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
                                 totalLabel.html(`${moneyro_vars.total}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
                                
@@ -241,7 +281,8 @@ class UIService {
         echo '<p><strong>' . __( 'Payment Method:', 'woocommerce' ) . '</strong> ' . esc_html( $order->get_meta( '_payment_method') ) . '</p>';
         echo '<p><strong>' . __( 'Payment UID:', 'woocommerce' ) . '</strong> ' . esc_html( $payment_uid ) . '</p>';
         echo '<p><strong>' . __( 'Payment Invoice:', 'woocommerce' ) . '</strong> <a href="' . esc_url( $this->gateway->gateway_baseUrl . '/invoice-preview/' . $payment_uid ) . '">' . __( 'View Invoice', 'woocommerce' ) . '</a></p>';
-
+       
     }
+
 }
 ?>

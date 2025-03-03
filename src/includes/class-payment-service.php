@@ -134,18 +134,21 @@ class Payment_Service {
             $this->gateway->logger->debug('billing phone ' . $order->get_billing_phone(), ['source' => 'moneyro-log']);
             $this->gateway->logger->debug('total amount ' . $user_pay_amount, ['source' => 'moneyro-log']);
             $this->gateway->logger->debug('total amount IRR ' . intval($user_pay_amount * $selling_rate), ['source' => 'moneyro-log']);
+            $this->gateway->logger->debug('get_transaction_id' . $this->generate_transaction_id(), ['source' => 'moneyro-log']);
             $this->gateway->logger->debug('callback_url ' . get_site_url() . "/wc-api/" . MONEYRO_PAYMENT_GATEWAY_ID . "?wc_order={$order_id}&status=success&payment_hash={$payment_hash}", ['source' => 'moneyro-log']);
 
 
             $user_data = array(
-                'uid'                      => $uid,
-                'merchant_uid'             => $this->gateway->merchant_uid,
-                'currency_symbol'          => 'AED',
-                'currency_received_amount' => round($user_pay_amount, 1),
-                'user_national_code'       => $order_national_id,
-                'user_pay_amount'          => round($user_pay_amount * $selling_rate, 1)  ,
-                'user_mobile'              => $order->get_billing_phone(),
-                'callback_url'             => get_site_url() . "/wc-api/" . MONEYRO_PAYMENT_GATEWAY_ID . "?wc_order={$order_id}&status=success&payment_hash={$payment_hash}"
+                'uid'                           => $uid,
+                'merchant_uid'                  => $this->gateway->merchant_uid,
+                'payment_method'                => 'gateway',
+                'currency_symbol'               => 'AED',
+                'currency_received_amount'      => round($user_pay_amount, 1),
+                'user_pay_amount'               => round($user_pay_amount * $selling_rate, 1),
+                'merchant_transaction_number'   => $this->generate_transaction_id(),
+                'user_national_code'            => $order_national_id,
+                'user_mobile'                   => $order->get_billing_phone(),
+                'callback_url'                  => get_site_url() . "/wc-api/" . MONEYRO_PAYMENT_GATEWAY_ID . "?wc_order={$order_id}&status=success&payment_hash={$payment_hash}"
             );
 
             $invoice_response = wp_remote_post(
@@ -224,24 +227,24 @@ class Payment_Service {
         $rates_detail = json_decode(wp_remote_retrieve_body($get_rates), true);
         $selling_rate = $rates_detail['AED']['when_selling_currency_to_user']['change_in_rial'];
     
-        $this->gateway->logger->debug('rates ' . $selling_rate, ['source' => 'moneyro-log']);
-    
-       
+        
         $order = wc_get_order($order_id);
         $shipping_total = $order->get_shipping_total();
         $subtotal = WC()->cart->get_subtotal();
-
+        
         // Get the total tax amount
         $taxes = WC()->cart->get_taxes_total();
         
         // Calculate the total including tax
         $total_including_tax = $subtotal + $taxes;
+        $margin_to_be_added = $this->gateway->shipment_margin_rate + $this->gateway->gateway_margin_rate ;
+        $new_shipping_total = $total_including_tax * ($margin_to_be_added / 100); 
+        $new_total = ceil($total_including_tax * ((100 + $margin_to_be_added) / 100) * $selling_rate) + 20000; 
+        $new_total = ceil($new_total/ $selling_rate);
         
-        $new_shipping_total = $total_including_tax * ($this->gateway->margin_rate / 100); 
-        $new_total = $total_including_tax + $new_shipping_total; 
-        
-        $this->gateway->logger->debug('new_total ' . $new_total, ['source' => 'moneyro-log']);
         $this->gateway->logger->debug('new_shipping_total ' . $new_shipping_total, ['source' => 'moneyro-log']);
+        $this->gateway->logger->error('new_total: ' . $new_total, ['source' => 'moneyro-log']);
+
 
         
         $order->set_shipping_total($new_shipping_total);
@@ -254,4 +257,18 @@ class Payment_Service {
             'selling_rate' => $selling_rate,
         ];
     }  
+
+    private function generate_transaction_id() {
+        // Generate a random 4-digit number
+        $random_number = mt_rand(1000, 9999);
+        
+        // Get the current timestamp (to ensure uniqueness)
+        $timestamp = time();
+        
+        // Combine the prefix, timestamp, and random number to form a unique ID
+        $transaction_id = "DGLand{$timestamp}{$random_number}";
+
+        return $transaction_id;
+    }
+    
 }

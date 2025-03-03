@@ -24,8 +24,17 @@ class AdminService{
                 'description' => __( 'Description displayed to customers during checkout.', 'woocommerce' ),
                 'default'     => __( 'Pay securely using our custom payment gateway.', 'woocommerce' ),
             ],
-            'margin_rate' => [
-                'title'       => __( 'Margin Rate', 'woocommerce' ),
+            'gateway_margin_rate' => [
+                'title'       => __( 'Gateway Margin Rate', 'woocommerce' ),
+                'type'        => 'number', 
+                'description' => __( 'Enter a margin rate as an integer. This rate will be multiplied by the total cost. Use a whole number, for example, 10 for 10% margin.', 'woocommerce' ),
+                'default'     => '1',
+                'custom_attributes' => [
+                    'min' => '0', 
+                ],
+            ],
+            'shipment_margin_rate' => [
+                'title'       => __( 'Shipment Margin Rate', 'woocommerce' ),
                 'type'        => 'number', 
                 'description' => __( 'Enter a margin rate as an integer. This rate will be used to calculate the shipping cost. Use a whole number, for example, 10 for 10% margin.', 'woocommerce' ),
                 'default'     => '',
@@ -71,6 +80,12 @@ class AdminService{
             ],
             'getrate_api' => [
                 'title'       => __( 'Rate API URL', 'woocommerce' ),
+                'type'        => 'text',
+                'description' => __( 'Base URL for the MoneyRo Rate API.', 'woocommerce' ),
+                'default'     => '',
+            ],
+            'moneyro_settings_api' => [
+                'title'       => __( 'Moneyro Settings API URL', 'woocommerce' ),
                 'type'        => 'text',
                 'description' => __( 'Base URL for the MoneyRo Rate API.', 'woocommerce' ),
                 'default'     => '',

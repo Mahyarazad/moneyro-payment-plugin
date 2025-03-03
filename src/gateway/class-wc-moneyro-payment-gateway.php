@@ -28,17 +28,19 @@ class WC_Moneyro_Payment_Gateway extends WC_Payment_Gateway {
         $this->init_settings();
 
         // Define user settings variables.
-        $this->enabled         = $this->get_option('enabled');
-        $this->title           = $this->get_option('title');
-        $this->description     = $this->get_option('description');
-        $this->hmac_secret_key = $this->get_option('hmac_secret_key');
-        $this->api_key         = $this->get_option('api_key');
-        $this->api_secret      = $this->get_option('api_secret');
-        $this->merchant_uid    = $this->get_option('merchant_uid');
-        $this->gateway_baseUrl = $this->get_option('gateway_baseUrl');
-        $this->gateway_api     = $this->get_option('gateway_api');
-        $this->getrate_api     = $this->get_option('getrate_api');
-        $this->margin_rate     = $this->get_option('margin_rate');
+        $this->enabled                  = $this->get_option('enabled');
+        $this->title                    = $this->get_option('title');
+        $this->description              = $this->get_option('description');
+        $this->hmac_secret_key          = $this->get_option('hmac_secret_key');
+        $this->api_key                  = $this->get_option('api_key');
+        $this->api_secret               = $this->get_option('api_secret');
+        $this->merchant_uid             = $this->get_option('merchant_uid');
+        $this->gateway_baseUrl          = $this->get_option('gateway_baseUrl');
+        $this->gateway_api              = $this->get_option('gateway_api');
+        $this->getrate_api              = $this->get_option('getrate_api');
+        $this->shipment_margin_rate     = $this->get_option('shipment_margin_rate');
+        $this->gateway_margin_rate      = $this->get_option('gateway_margin_rate');
+        $this->moneyro_settings_api     = $this->get_option('moneyro_settings_api');
 
         // Initialize Payment Service
         $this->payment_service = new Payment_Service($this);
