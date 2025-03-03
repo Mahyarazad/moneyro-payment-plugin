@@ -243,7 +243,7 @@ class Payment_Service {
         $new_total = ceil($new_total/ $selling_rate);
         
         $this->gateway->logger->debug('new_shipping_total ' . $new_shipping_total, ['source' => 'moneyro-log']);
-        $this->gateway->logger->error('new_total: ' . $new_total, ['source' => 'moneyro-log']);
+        $this->gateway->logger->debug('new_total: ' . $new_total, ['source' => 'moneyro-log']);
 
 
         
