@@ -254,9 +254,41 @@ class UIService {
     public function display_payment_id_on_thank_you_page($order_id) {
        try{
             $order = wc_get_order($order_id);
+            $order_status = $order->get_status();
+            $this->gateway->logger->debug('order_status => ' . $order_status, ['source' => 'moneyro-log']);
+            if (MONEYRO_PAYMENT_GATEWAY_ID === $order->get_payment_method()) {
 
-            if (MONEYRO_PAYMENT_GATEWAY_ID === $order->get_meta('_payment_method')) {
-               if($payment_status === 'success'){
+               if($order_status === 'pending' || $order_status === 'cancelled'){
+                   
+                   echo '<script>
+                    document.addEventListener("DOMContentLoaded", function () {
+                    const successMessage = document.querySelector(".woocommerce-notice--success.woocommerce-thankyou-order-received");
+                    const actionsPay = document.querySelector(".order-actions-button");
+                    const actionsCancel = document.querySelector(".order-actions-button ");
+
+                        if (successMessage) {
+                            // Change the text content
+                            successMessage.textContent = "Payment failed or canceled";
+
+                            // Change the color (customize as needed)
+                            successMessage.style.backgroundColor = "#f8d7da"; // Light red background
+                            successMessage.style.color = "#721c24"; // Dark red text
+                            successMessage.style.borderColor = "#721c24";
+                        }
+
+                        if (actionsPay) {
+                            actionsPay.remove(); // Remove the Pay button
+                        }
+
+                        if (actionsCancel) {
+                            actionsCancel.remove(); // Remove the Cancel button
+                        }
+                        });
+                        </script>';
+
+                    $order->update_status('cancelled', 'Payment failed or canceled.');
+
+                }else{
                     // Get the payment UID from the order meta
                     $uid = get_post_meta($order_id, '_payment_uid', true);
                     if(strlen($uid) !== 0){
@@ -271,27 +303,8 @@ class UIService {
                                     }
                                 });
                             </script>';
-            
-               }else{
-                   echo '<script>
-                       document.addEventListener("DOMContentLoaded", function () {
-                           const successMessage = document.querySelector(".woocommerce-notice--success.woocommerce-thankyou-order-received");
-                           
-                           if (successMessage) {
-                               // Change the text content
-                               successMessage.textContent = "Payment failed or canceled";
-
-                               // Change the color (customize as needed)
-                               successMessage.style.backgroundColor = "#f8d7da"; // Light red background
-                               successMessage.style.color = "#721c24"; // Dark red text
-                               successMessage.style.borderColor = "#721c24";
-                           }
-                       });
-                   </script>';
-                   $order->update_status('failed', 'Payment failed or canceled.');
-                   exit;
-               }
-            }  
+                    }
+                }  
            }
         }catch (Exception $e){
             $this->gateway->logger->error('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);

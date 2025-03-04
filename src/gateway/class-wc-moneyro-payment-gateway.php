@@ -72,7 +72,7 @@ class WC_Moneyro_Payment_Gateway extends WC_Payment_Gateway {
         add_action('woocommerce_order_details_after_order_table', [$this->order_uid_service, 'display_order_uid_on_account_page'], 10, 1);
         
         add_action('woocommerce_before_order_pay', [$this->order_uid_service, 'check_and_renew_payment_uid'], 10, 1);
-        
+     
         add_action('wp_footer', [$this->ui_service, 'enqueue_script'], 10, 2);
         
     }

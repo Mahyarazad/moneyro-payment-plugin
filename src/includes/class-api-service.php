@@ -19,7 +19,9 @@ class API_Service {
     //  http://localhost/digi/wc-api/moneyro_payment_gateway?wc_order=4129&status=success&payment_hash=751e1f03ddb1d4fddae87747a849611bced1f219f61287fd4d40a2922383c2e0
     //  
     public function return_from_gateway() {
+        $this->gateway->logger->debug('return_from_gateway_trigered' , ['source' => 'moneyro-log']);
         try{
+            
             if (isset($_GET['wc_order']) && !empty($_GET['wc_order'])) {
                 $order_id = sanitize_text_field($_GET['wc_order']);
                 $order = wc_get_order($order_id);
