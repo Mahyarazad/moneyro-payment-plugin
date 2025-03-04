@@ -26,13 +26,19 @@ class API_Service {
                 $payment_uid = $order->get_meta('_payment_uid');
 
 
+
                 if ($order) {
                     $payment_status = sanitize_text_field($_GET['status']); // Payment status from gateway
                     $payment_hash = sanitize_text_field($_GET['payment_hash']); // Transaction ID from gateway
                     $national_id = get_post_meta($order_id, '_billing_national_id', true);
+                    $transaction_id = $payment_hash;
                     $check_hash = hash_hmac('sha256', $payment_uid, $this->hmac_secret_key);
 
                     if ($payment_status === 'success' && $check_hash === $payment_hash) {
+
+                        // Reduce stock levels
+                        wc_reduce_stock_levels( $order_id );
+
                         $order->payment_complete($transaction_id);
                         $order->add_order_note('Payment completed via MoneyRo. Transaction ID: ' . $transaction_id);
                         wc_add_notice('Payment successful!', 'success');

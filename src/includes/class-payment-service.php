@@ -202,8 +202,7 @@ class Payment_Service {
             // Mark order as pending payment
             $order->update_status( 'pending', __( 'Awaiting payment.', 'woocommerce' ) );
 
-            // Reduce stock levels
-            wc_reduce_stock_levels( $order_id );
+
 
             // Remove cart
             WC()->cart->empty_cart();
@@ -227,7 +226,7 @@ class Payment_Service {
         $rates_detail = json_decode(wp_remote_retrieve_body($get_rates), true);
         $selling_rate = $rates_detail['AED']['when_selling_currency_to_user']['change_in_rial'];
     
-        
+
         $order = wc_get_order($order_id);
         $shipping_total = $order->get_shipping_total();
         $subtotal = WC()->cart->get_subtotal();
