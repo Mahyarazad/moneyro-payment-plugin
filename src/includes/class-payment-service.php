@@ -28,6 +28,8 @@ class Payment_Service {
                 $new_uid = wp_generate_uuid4();
                 $new_payment_hash = hash_hmac('sha256', $new_uid, $this->hmac_secret_key);
 
+                
+                $order->update_meta_data('_transaction_id', sanitize_text_field($new_payment_hash));
                 // Update UID in the order meta
                 $order->update_meta_data('_payment_uid', sanitize_text_field($new_uid));
                 // Update UID in the order meta

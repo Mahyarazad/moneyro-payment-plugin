@@ -98,8 +98,11 @@ class UIService {
                                 var settings = {
                                     "url": moneyro_vars.moneyro_settings_api,
                                     "method": "GET",
-                                    "dataType": "json"
-                                    
+                                    "dataType": "json",
+                                    "crossDomain": true,  // This ensures the request is treated as cross-origin
+                                    "xhrFields": {
+                                        "withCredentials": true // If you need cookies or credentials for the request
+                                    }
                                 };
 
                                 $.ajax(settings).done(function(response) {
