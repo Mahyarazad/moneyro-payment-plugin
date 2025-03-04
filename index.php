@@ -36,6 +36,7 @@ function moneyro_payment_gateway_init() {
     require_once __DIR__ . '/src/includes/class-api-service.php';
     require_once __DIR__ . '/src/includes/class-ui-service.php';
     require_once __DIR__ . '/src/includes/class-uid-service.php';
+    require_once __DIR__ . '/src/includes/class-transaction-id-service.php';
     require_once __DIR__ . '/src/gateway/class-wc-moneyro-payment-gateway.php';
 
     // Instantiate the Dependency Injection (DI) container
@@ -45,9 +46,10 @@ function moneyro_payment_gateway_init() {
 
     // Register services in the container
     $container->set('logger', wc_get_logger());
+    $container->set('transaction-service', new TransactionService());
     $container->set('admin_field_init_service', new AdminService());
     // $container->set('ui_service', new UIService($container->get('logger')));
-    $container->set('order_uid_service', new UIDService($container->get('logger')));
+    $container->set('order_uid_service', new UIDService($container->get('logger'), $container->get('transaction-service')));
 
 
     // Add the payment gateway to WooCommerce with DI container

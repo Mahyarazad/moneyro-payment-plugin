@@ -7,7 +7,6 @@ if (!defined('ABSPATH')) {
 class Payment_Service {
     protected $gateway;
 
-
     public function __construct($gateway) {
         $this->gateway = $gateway;
     }
@@ -19,17 +18,16 @@ class Payment_Service {
             $current_time = time();
             $expiration_timestamp = $order->get_meta('_payment_uid_expiration_timestamp');
             $uid = null;
-
+            
             if ($current_time > $expiration_timestamp) {
 
                 $this->gateway->logger->debug('creating new uid payment '.$uid , ['source' => 'moneyro-log']);
                 // Save UUID in the order meta
-
+                
                 $new_uid = wp_generate_uuid4();
                 $new_payment_hash = hash_hmac('sha256', $new_uid, $this->hmac_secret_key);
-
                 
-                $order->update_meta_data('_transaction_id', sanitize_text_field($new_payment_hash));
+                $order->update_meta_data('_order_key', sanitize_text_field($this->generate_transaction_id()));
                 // Update UID in the order meta
                 $order->update_meta_data('_payment_uid', sanitize_text_field($new_uid));
                 // Update UID in the order meta
@@ -136,7 +134,7 @@ class Payment_Service {
             $this->gateway->logger->debug('billing phone ' . $order->get_billing_phone(), ['source' => 'moneyro-log']);
             $this->gateway->logger->debug('total amount ' . $user_pay_amount, ['source' => 'moneyro-log']);
             $this->gateway->logger->debug('total amount IRR ' . intval($user_pay_amount * $selling_rate), ['source' => 'moneyro-log']);
-            $this->gateway->logger->debug('get_transaction_id' . $this->generate_transaction_id(), ['source' => 'moneyro-log']);
+            $this->gateway->logger->debug('get_transaction_id' . get_post_meta($order_id, '_order_key', true), ['source' => 'moneyro-log']);
             $this->gateway->logger->debug('callback_url ' . get_site_url() . "/wc-api/" . MONEYRO_PAYMENT_GATEWAY_ID . "?wc_order={$order_id}&status=success&payment_hash={$payment_hash}", ['source' => 'moneyro-log']);
 
 
@@ -147,7 +145,7 @@ class Payment_Service {
                 'currency_symbol'               => 'AED',
                 'currency_received_amount'      => round($user_pay_amount, 1),
                 'user_pay_amount'               => round($user_pay_amount * $selling_rate, 1),
-                'merchant_transaction_number'   => $this->generate_transaction_id(),
+                'merchant_transaction_number'   => get_post_meta($order_id, '_order_key', true),
                 'user_national_code'            => $order_national_id,
                 'user_mobile'                   => $order->get_billing_phone(),
                 'callback_url'                  => get_site_url() . "/wc-api/" . MONEYRO_PAYMENT_GATEWAY_ID . "?wc_order={$order_id}&status=success&payment_hash={$payment_hash}"
@@ -204,12 +202,8 @@ class Payment_Service {
             // Mark order as pending payment
             $order->update_status( 'pending', __( 'Awaiting payment.', 'woocommerce' ) );
 
-
-
             // Remove cart
             WC()->cart->empty_cart();
-
-
 
             // Unset temporary variables
             unset($invoice_detail, $invoice_response, $invoice_status_code, $user_data, $auth_data, $auth_detail, $auth_response, $payment_hash, $token, $order_national_id);

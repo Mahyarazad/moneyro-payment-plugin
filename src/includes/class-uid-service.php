@@ -7,9 +7,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 class UIDService {
 
     protected $logger;
+    protected $transaction_service;
 
-    public function __construct($logger) {
+    public function __construct($logger, $transaction_service) {
         $this->logger = $logger;
+        $this->transaction_service = $transaction_service;
     }
 
     public function check_and_renew_payment_uid($order) {
@@ -40,6 +42,7 @@ class UIDService {
                 // Generate HMAC 
                 $payment_hash = hash_hmac('sha256', $uid, $this->hmac_secret_key);
 
+                $order->update_meta_data('_order_key', sanitize_text_field($this->transaction_service->generate_transaction_id()));
                 // Save UUID in the order meta
                 $order->update_meta_data('_payment_uid', sanitize_text_field($uid));
                 // Save UUID in the order meta

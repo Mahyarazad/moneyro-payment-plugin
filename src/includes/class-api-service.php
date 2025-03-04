@@ -24,16 +24,22 @@ class API_Service {
                 $order_id = sanitize_text_field($_GET['wc_order']);
                 $order = wc_get_order($order_id);
                 $payment_uid = $order->get_meta('_payment_uid');
-                $transaction_id = $order->get_meta('_transaction_id');
-
+                $transaction_id = $order->get_meta('_order_key');
+                $order_key = sanitize_text_field($_GET['key']);
 
                 if ($order) {
                     $payment_status = sanitize_text_field($_GET['status']); // Payment status from gateway
                     $payment_hash = sanitize_text_field($_GET['payment_hash']); // Transaction ID from gateway
                     $national_id = get_post_meta($order_id, '_billing_national_id', true);
-                    $payment_hash = hash_hmac('sha256', $payment_uid, $this->hmac_secret_key);
+                    $hash_value = hash_hmac('sha256', $payment_uid, $this->hmac_secret_key);
 
-                    if ($payment_status === 'success' && $payment_hash === $transaction_id) {
+                    if (!isset($_GET['payment_hash']) || empty($_GET['payment_hash']))
+                    {
+                        $order->update_status('failed', 'Payment failed or canceled.');
+                        wc_add_notice('Payment failed. Please try again.', 'error');
+                    }
+
+                    if ($payment_status === 'success' && $payment_hash === $hash_value) {
 
                         // Reduce stock levels
                         wc_reduce_stock_levels( $order_id );

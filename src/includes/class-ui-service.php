@@ -99,9 +99,9 @@ class UIService {
                                     "url": moneyro_vars.moneyro_settings_api,
                                     "method": "GET",
                                     "dataType": "json",
-                                    "crossDomain": true,  // This ensures the request is treated as cross-origin
+                                    "crossDomain": true,  
                                     "xhrFields": {
-                                        "withCredentials": true // If you need cookies or credentials for the request
+                                        "withCredentials": true 
                                     }
                                 };
 
@@ -253,24 +253,46 @@ class UIService {
 
     public function display_payment_id_on_thank_you_page($order_id) {
        try{
-           if (MONEYRO_PAYMENT_GATEWAY_ID === WC()->session->get('chosen_payment_method')) {
-                // Get the payment UID from the order meta
-                $uid = get_post_meta($order_id, '_payment_uid', true);
-                if(strlen($uid) !== 0){
-                    echo '<script>
-                            document.addEventListener("DOMContentLoaded", function () {
-                                const orderDetailsList = document.querySelector(".woocommerce-order-overview.order_details");
-                                if (orderDetailsList) {
-                                    const nationalIdItem = document.createElement("li");
-                                    nationalIdItem.classList.add("woocommerce-order-overview__national-id");
-                                    nationalIdItem.innerHTML = `Payment UID: <strong>' . esc_html($uid) . '</strong>`;
-                                    orderDetailsList.appendChild(nationalIdItem);
-                                }
-                            });
-                        </script>';
-                }
-           }
+            $order = wc_get_order($order_id);
 
+            if (MONEYRO_PAYMENT_GATEWAY_ID === $order->get_meta('_payment_method')) {
+               if($payment_status === 'success'){
+                    // Get the payment UID from the order meta
+                    $uid = get_post_meta($order_id, '_payment_uid', true);
+                    if(strlen($uid) !== 0){
+                        echo '<script>
+                                document.addEventListener("DOMContentLoaded", function () {
+                                    const orderDetailsList = document.querySelector(".woocommerce-order-overview.order_details");
+                                    if (orderDetailsList) {
+                                        const nationalIdItem = document.createElement("li");
+                                        nationalIdItem.classList.add("woocommerce-order-overview__national-id");
+                                        nationalIdItem.innerHTML = `Payment UID: <strong>' . esc_html($uid) . '</strong>`;
+                                        orderDetailsList.appendChild(nationalIdItem);
+                                    }
+                                });
+                            </script>';
+            
+               }else{
+                   echo '<script>
+                       document.addEventListener("DOMContentLoaded", function () {
+                           const successMessage = document.querySelector(".woocommerce-notice--success.woocommerce-thankyou-order-received");
+                           
+                           if (successMessage) {
+                               // Change the text content
+                               successMessage.textContent = "Payment failed or canceled";
+
+                               // Change the color (customize as needed)
+                               successMessage.style.backgroundColor = "#f8d7da"; // Light red background
+                               successMessage.style.color = "#721c24"; // Dark red text
+                               successMessage.style.borderColor = "#721c24";
+                           }
+                       });
+                   </script>';
+                   $order->update_status('failed', 'Payment failed or canceled.');
+                   exit;
+               }
+            }  
+           }
         }catch (Exception $e){
             $this->gateway->logger->error('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
         }  
