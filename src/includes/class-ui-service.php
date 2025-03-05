@@ -122,12 +122,6 @@ class UIService {
                                     var new_shipping_cost = total_including_tax * ((parseInt(moneyro_vars.shipment_margin_rate) + parseInt(moneyro_vars.gateway_margin_rate)) / 100);
                                     var new_shipping_cost_irr = new_shipping_cost * selling_rate;
                                     var user_pay_amount =  Math.ceil(total_including_tax * ((parseInt(moneyro_vars.shipment_margin_rate) + parseInt(moneyro_vars.gateway_margin_rate) + 100) / 100) * selling_rate) + purchase_via_rial_initial_fee;
-
-                                    console.log('new_shipping_cost', new_shipping_cost);
-                                    console.log('total_including_tax', total_including_tax);
-                                    console.log('selling_rate', selling_rate);
-                                    console.log('user_pay_amount', user_pay_amount);
-
                                     var user_pay_amount_for_ui = roundToOneDecimal(user_pay_amount / selling_rate);
 
                                     if (shippingLabel.length) {
@@ -145,27 +139,17 @@ class UIService {
                                             </tr>`;
                                         $('.woocommerce-shipping-totals.shipping').after(newRow);
                                     }
-
-                                    // if ($('.dgland-shipping-info-aed').length === 0) {
-                                    //     var include = `<div class='dgland'></br><small class="includes_tax">(includes <span class="woocommerce-Price-amount amount">
-                                    //         ${new_shipping_cost}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span></span> DGLand Fee)
-                                    //         </small></div>`;
-
-                                    //     $('.includes_tax').after(include);
-                                    // }
-                                    
+                                   
                                 }).fail(function (jqXHR, textStatus, errorThrown) {
                                     // Handle any errors here
                                     window.alert('AJAX error:', textStatus, errorThrown);
                                 });;
   
                             }else{
-                                if ($('.moneyro-shipping-info').length) {
-                                    $('.moneyro-shipping-info').remove();
+                                if ($('.dgland-shipping-info').length) {
+                                    $('.dgland-shipping-info').remove();
                                 }
-                                if ($('.dgland-margin-info').length) {
-                                    $('.dgland-margin-info').remove();
-                                }
+                                
                                 shippingLabel.html(`11&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
                                 totalLabel.html(`${moneyro_vars.total}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
                                
@@ -200,32 +184,46 @@ class UIService {
     
     public function validate_national_id_field($data, $errors) {
         if (MONEYRO_PAYMENT_GATEWAY_ID === WC()->session->get('chosen_payment_method')) {
-
+    
             $national_id = $_POST['billing_national_id'];
+            $billing_phone = $_POST['billing_phone'];
+    
             // Check if the National ID is empty
             if (empty($national_id)) {
-                $errors->add('billing_national_id_error', __('National ID is required.', 'woocommerce'));
+                $errors->add('billing_national_id_error', sprintf(
+                    __('<a href="#billing_national_id"><strong>National ID</strong> is required.</a>', 'woocommerce')
+                ));
             }
-        
+    
             // Check if the National ID contains only digits
             if (!empty($national_id) && !preg_match('/^\d+$/', $national_id)) {
-                $errors->add('billing_national_id_invalid', __('National ID should only contain numbers.', 'woocommerce'));
+                $errors->add('billing_national_id_invalid', sprintf(
+                    __('<a href="#billing_national_id"><strong>National ID</strong> should only contain numbers.</a>', 'woocommerce')
+                ));
             }
-        
+    
             // Check if the National ID is exactly 10 digits
             if (!empty($national_id) && !preg_match('/^\d{10}$/', $national_id)) {
-                $errors->add('billing_national_id_invalid', __('National ID must be exactly 10 digits.', 'woocommerce'));
+                $errors->add('billing_national_id_invalid', sprintf(
+                    __('<a href="#billing_national_id"><strong>National ID</strong> must be exactly 10 digits.</a>', 'woocommerce')
+                ));
             }
-
-            $billing_phone = $_POST['billing_phone'];
+    
             // Check if the billing phone is empty
             if (empty($billing_phone)) {
-                wc_add_notice(__('Billing Phone is a required field.', 'woocommerce'), 'error');
+                wc_add_notice(
+                    __('<a href="#billing_phone"><strong>Billing Phone</strong> is a required field.</a>', 'woocommerce'),
+                    'error'
+                );
             } elseif (strlen($billing_phone) !== 13 || !preg_match('/^\+989/', $billing_phone)) {
-                wc_add_notice(__('Billing Phone must start with +989 and be exactly 13 characters long.', 'woocommerce'), 'error');
+                wc_add_notice(
+                    __('<a href="#billing_phone"><strong>Billing Phone</strong> must start with +989 and be exactly 13 characters long.</a>', 'woocommerce'),
+                    'error'
+                );
             }
         }
     }
+    
 
     public function save_billing_national_id($order_id, $data) {
         try{
