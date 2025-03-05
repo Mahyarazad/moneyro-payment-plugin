@@ -46,7 +46,6 @@ class Payment_Service {
             if(empty($order_national_id)){
                 $this->gateway->logger->debug('National Id not found!!! ', ['source' => 'moneyro-log']);
                 wc_add_notice('National Id not found.', 'error');
-                //  wc_clear_notices();
                 return;
             }
             
@@ -58,10 +57,8 @@ class Payment_Service {
             if(empty($uid)){
                 $this->gateway->logger->debug('Order UID not found!!! ', ['source' => 'moneyro-log']);
                 wc_add_notice('Order UID not found.', 'error');
-                //wc_clear_notices();
                 return;
             }
-
 
 
             $get_rates = wp_remote_get(
@@ -70,7 +67,6 @@ class Payment_Service {
 
             if ( is_wp_error( $get_rates ) ) {
                 wc_add_notice('Failed to get current rates from payment server.', 'error');
-                //wc_clear_notices();
                 return;
             }
 
@@ -97,7 +93,6 @@ class Payment_Service {
 
             if (is_wp_error($auth_response)) {
                 wc_add_notice('Failed to authenticate with payment server.', 'error');
-                //wc_clear_notices();
                 return;
             }
             
@@ -106,23 +101,11 @@ class Payment_Service {
             if ($auth_status_code !== 200) {
                 
                 wc_add_notice('Failed to authenticate with payment server. Status code: ' . $auth_status_code, 'error');
-                wc_clear_notices();
-                return;
-            }
-
-            $auth_detail = json_decode( wp_remote_retrieve_body( $auth_response ), true );
-            $auth_detail = $auth_detail['detail'];
-
-            if ($auth_status_code === 400) {
-                wc_add_notice( $auth_detail . ' Status code: ' . $auth_status_code, 'error' );
-                //wc_clear_notices();
                 return;
             }
 
             $auth_data = json_decode( wp_remote_retrieve_body( $auth_response ), true );
-
             $token = $auth_data['token'];
-        
 
             // Step 1.2: Create purchase invoice
 
@@ -167,52 +150,60 @@ class Payment_Service {
                 
                 wc_add_notice('Failed to get a response from payment server.', 'error');
                 $this->gateway->logger->debug('Failed to get a response from payment server. ' . $error_messages, ['source' => 'moneyro-log']);
-                
-                //wc_clear_notices();
+
                 return;
             }
 
             $invoice_status_code = wp_remote_retrieve_response_code($invoice_response);
-            $invoice_body = wp_remote_retrieve_body( $invoice_response );
-            
+            $invoice_detail = wp_remote_retrieve_body( $invoice_response );
+
             if ($invoice_status_code !== 200) {
-                $this->gateway->logger->debug('Failed to get a response from payment server. ' . $invoice_body, ['source' => 'moneyro-log']);
-                wc_add_notice('Failed to get a response from payment server. Status code: ' . $invoice_status_code . $invoice_body, 'error');
-                //wc_clear_notices();
+
+                $invoice_detail = json_decode($invoice_detail, true);
+
+                if (isset($invoice_detail['detail']) && is_array($invoice_detail['detail'])) {
+                    foreach ($invoice_detail['detail'] as $error) {
+                        if (isset($error['msg']) && isset($error['input'])) {
+                            $msg = esc_html($error['msg']);
+                            $input = esc_html($error['input']);
+                
+                            // Log the extracted values
+                            $this->gateway->logger->debug("Error Message: $msg, Input: $input", ['source' => 'moneyro-log']);
+                
+                            // Optionally display the error on the front-end
+                            wc_add_notice("Error: $msg (Input: $input)", 'error');
+                            return;
+                        }
+                    }
+                }
+
+                wc_add_notice('Failed to get a response from payment server. Status code: ' . $invoice_status_code . $invoice_detail, 'error');
                 return;
             }
-
-            $invoice_detail = json_decode( wp_remote_retrieve_body( $invoice_response ), true );
-            $invoice_detail = $invoice_detail['detail'];
             
-            if ($auth_status_code === 400) {
-                wc_add_notice( $invoice_detail . ' Status code: ' . $invoice_status_code, 'error' );
-                //wc_clear_notices();
-                return;
-            }
-
-            $invoice_data = json_decode( wp_remote_retrieve_body( $invoice_response ), true );
 
             // Step 2: Redirect to payment gateway
             $payment_url = "{$this->gateway->gateway_baseUrl}/invoice-preview/{$uid}/";
-            // $order->update_meta_data( '_payment_method', MONEYRO_PAYMENT_GATEWAY_ID ); // 'moneyro'
-            // $order->update_meta_data( '_payment_method_title', MONEYRO_PAYMENT_GATEWAY_ID );
-            $order->save();
 
             // Mark order as pending payment
             $order->update_status( 'pending', __( 'Awaiting payment.', 'woocommerce' ) );
 
+            $order->save();
+
             // Remove cart
             WC()->cart->empty_cart();
 
-            // Unset temporary variables
-            unset($invoice_detail, $invoice_response, $invoice_status_code, $user_data, $auth_data, $auth_detail, $auth_response, $payment_hash, $token, $order_national_id);
+            // Unset temporary variables here
+            unset($order, $current_time, $expiration_timestamp, $uid, $new_uid, $new_payment_hash);
+            unset($order_national_id, $get_rates, $result, $auth_response, $auth_status_code, $auth_data, $token);
+            unset($user_pay_amount, $selling_rate, $user_data, $invoice_response, $invoice_status_code, $invoice_detail);
 
             // Return thank you page redirect
             return array(
                 'result'   => 'success',
                 'redirect' => $payment_url,
             );  
+
         }catch (Exception $e){
             $this->gateway->logger->error('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
         }  
