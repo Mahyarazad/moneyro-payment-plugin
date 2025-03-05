@@ -177,7 +177,7 @@ class Payment_Service {
                     }
                 }
 
-                wc_add_notice('Failed to get a response from payment server. Status code: ' . $invoice_status_code . $invoice_detail, 'error');
+                wc_add_notice('Failed to get a response from payment server. Status code: ' . $invoice_status_code . json_encode($invoice_detail), 'error');
                 return;
             }
             
