@@ -260,10 +260,9 @@ class UIService {
                    
                    echo '<script>
                     document.addEventListener("DOMContentLoaded", function () {
-                    const successMessage = document.querySelector(".woocommerce-notice--success.woocommerce-thankyou-order-received");
-                    const actionsPay = document.querySelector(".order-actions-button");
-                    const actionsCancel = document.querySelector(".order-actions-button ");
-
+                        const successMessage = document.querySelector(".woocommerce-notice--success.woocommerce-thankyou-order-received");
+                        const woocommerceButtons = document.querySelectorAll(".woocommerce-button");
+                        
                         if (successMessage) {
                             // Change the text content
                             successMessage.textContent = "Payment failed or canceled";
@@ -274,15 +273,12 @@ class UIService {
                             successMessage.style.borderColor = "#721c24";
                         }
 
-                        if (actionsPay) {
-                            actionsPay.remove(); // Remove the Pay button
-                        }
-
-                        if (actionsCancel) {
-                            actionsCancel.remove(); // Remove the Cancel button
-                        }
+                        woocommerceButtons.forEach(button => {
+                            button.remove();
                         });
-                        </script>';
+
+                    });
+                    </script>';
 
                     $order->update_status('cancelled', 'Payment failed or canceled.');
 
