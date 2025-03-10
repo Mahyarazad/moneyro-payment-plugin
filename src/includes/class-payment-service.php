@@ -25,13 +25,10 @@ class Payment_Service {
                 // Save UUID in the order meta
                 
                 $new_uid = wp_generate_uuid4();
-                $new_payment_hash = hash_hmac('sha256', $new_uid, $this->hmac_secret_key);
                 
                 $order->update_meta_data('_order_key', sanitize_text_field($this->generate_transaction_id()));
                 // Update UID in the order meta
                 $order->update_meta_data('_payment_uid', sanitize_text_field($new_uid));
-                // Update UID in the order meta
-                $order->update_meta_data('_payment_hash', sanitize_text_field($new_payment_hash));
                 // Save _payment_uid_creation_timestamp in the order meta
                 $order->update_meta_data('_payment_uid_creation_timestamp', sanitize_text_field(time()));
                 // Save _payment_uid_expiration_timestamp in the order meta
@@ -52,7 +49,6 @@ class Payment_Service {
             
             // Step 1.1: Obtain the token
             $uid =  get_post_meta($order_id, '_payment_uid', true);
-            $payment_hash =  get_post_meta($order_id, '_payment_hash', true);
 
             if(empty($uid)){
                 $this->gateway->logger->debug('Order UID not found!!! ', ['source' => 'moneyro-log']);
@@ -109,29 +105,27 @@ class Payment_Service {
 
             // Step 1.2: Create purchase invoice
 
-            $user_pay_amount = $result['new_total'];
-            $selling_rate = $result['selling_rate'];
+            $transaction_id = get_post_meta($order_id, '_order_key', true);
 
             $this->gateway->logger->debug('uid ' . $uid, ['source' => 'moneyro-log']);
             $this->gateway->logger->debug('token ' . $token, ['source' => 'moneyro-log']);
             $this->gateway->logger->debug('billing phone ' . $order->get_billing_phone(), ['source' => 'moneyro-log']);
-            $this->gateway->logger->debug('total amount ' . $user_pay_amount, ['source' => 'moneyro-log']);
-            $this->gateway->logger->debug('total amount IRR ' . intval($user_pay_amount * $selling_rate), ['source' => 'moneyro-log']);
-            $this->gateway->logger->debug('get_transaction_id' . get_post_meta($order_id, '_order_key', true), ['source' => 'moneyro-log']);
-            $this->gateway->logger->debug('callback_url ' . get_site_url() . "/wc-api/" . MONEYRO_PAYMENT_GATEWAY_ID . "?wc_order={$order_id}&status=success&payment_hash={$payment_hash}", ['source' => 'moneyro-log']);
-
+            $this->gateway->logger->debug('currency_received_amount' . $result['currency_received_amount'], ['source' => 'moneyro-log']);
+            $this->gateway->logger->debug('user_pay_amount' . $result['user_pay_amount'], ['source' => 'moneyro-log']);
+            $this->gateway->logger->debug('get_transaction_id' . $transaction_id, ['source' => 'moneyro-log']);
+            $this->gateway->logger->debug('callback_url ' . get_site_url() . "/wc-api/" . MONEYRO_PAYMENT_GATEWAY_ID . "?wc_order={$order_id}&token={$token}&payment_uid={$uid}&transaction_id={$transaction_id}", ['source' => 'moneyro-log']);
 
             $user_data = array(
                 'uid'                           => $uid,
                 'merchant_uid'                  => $this->gateway->merchant_uid,
                 'payment_method'                => 'gateway',
                 'currency_symbol'               => 'AED',
-                'currency_received_amount'      => round($user_pay_amount, 1),
-                'user_pay_amount'               => round($user_pay_amount * $selling_rate, 1),
-                'merchant_transaction_number'   => get_post_meta($order_id, '_order_key', true),
+                'currency_received_amount'      => $result['currency_received_amount'],
+                'user_pay_amount'               => $result['user_pay_amount'],
+                'merchant_transaction_number'   => $transaction_id,
                 'user_national_code'            => $order_national_id,
                 'user_mobile'                   => $order->get_billing_phone(),
-                'callback_url'                  => get_site_url() . "/wc-api/" . MONEYRO_PAYMENT_GATEWAY_ID . "?wc_order={$order_id}&status=success&payment_hash={$payment_hash}"
+                'callback_url'                  => get_site_url() . "/wc-api/" . MONEYRO_PAYMENT_GATEWAY_ID . "?wc_order={$order_id}&token={$token}&payment_uid={$uid}&transaction_id={$transaction_id}"
             );
 
             $invoice_response = wp_remote_post(
@@ -194,9 +188,9 @@ class Payment_Service {
             WC()->cart->empty_cart();
 
             // Unset temporary variables here
-            unset($order, $current_time, $expiration_timestamp, $uid, $new_uid, $new_payment_hash);
+            unset($order, $current_time, $expiration_timestamp, $uid, $new_uid, $transaction_id);
             unset($order_national_id, $get_rates, $result, $auth_response, $auth_status_code, $auth_data, $token);
-            unset($user_pay_amount, $selling_rate, $user_data, $invoice_response, $invoice_status_code, $invoice_detail);
+            unset($selling_rate, $user_data, $invoice_response, $invoice_status_code, $invoice_detail);
 
             // Return thank you page redirect
             return array(
@@ -223,23 +217,26 @@ class Payment_Service {
         
         // Calculate the total including tax
         $total_including_tax = $subtotal + $taxes;
-        $margin_to_be_added = $this->gateway->shipment_margin_rate + $this->gateway->gateway_margin_rate ;
-        $new_shipping_total = $total_including_tax * ($margin_to_be_added / 100); 
-        $new_total = ceil($total_including_tax * ((100 + $margin_to_be_added) / 100) * $selling_rate) + 20000; 
-        $new_total = ceil($new_total/ $selling_rate);
         
-        $this->gateway->logger->debug('new_shipping_total ' . $new_shipping_total, ['source' => 'moneyro-log']);
+        $new__total_with_shipment_cost = $total_including_tax * ((100 + $this->gateway->shipment_margin_rate) / 100); 
+
+        $new_total = ceil($new__total_with_shipment_cost);
+        $new_total_irr = ceil($new_total * ((100 + $this->gateway->gateway_margin_rate) / 100 ) * $selling_rate) + 20000; 
+        
+        $this->gateway->logger->debug('taxes ' . $taxes, ['source' => 'moneyro-log']);
+        $this->gateway->logger->debug('subtotal ' . $subtotal, ['source' => 'moneyro-log']);
+        $this->gateway->logger->debug('new__total_with_shipment_cost ' . $new__total_with_shipment_cost, ['source' => 'moneyro-log']);
         $this->gateway->logger->debug('new_total: ' . $new_total, ['source' => 'moneyro-log']);
+        $this->gateway->logger->debug('new_total_irr ' . $new_total_irr, ['source' => 'moneyro-log']);
 
-
-        
         $order->set_shipping_total($new_shipping_total);
         $order->set_total($new_total);
         $order->save();
 
 
         return [
-            'new_total' => $new_total,
+            'currency_received_amount' => $new_total,
+            'user_pay_amount' => $new_total_irr,
             'selling_rate' => $selling_rate,
         ];
     }  

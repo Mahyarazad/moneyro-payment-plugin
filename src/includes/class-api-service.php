@@ -22,48 +22,105 @@ class API_Service {
         $this->gateway->logger->debug('return_from_gateway_trigered' , ['source' => 'moneyro-log']);
         try{
             
-            if (isset($_GET['wc_order']) && !empty($_GET['wc_order'])) {
-                $order_id = sanitize_text_field($_GET['wc_order']);
-                $order = wc_get_order($order_id);
-                $payment_uid = $order->get_meta('_payment_uid');
-                $transaction_id = $order->get_meta('_order_key');
-                $order_key = sanitize_text_field($_GET['key']);
+            if ( !isset($_GET['wc_order']) || empty($_GET['wc_order']) ) {
+                // Handle the case where wc_order is not set or is empty
+                wc_add_notice('Order ID is missing or invalid.', 'error');
+                exit;
+            }
+            
+            if (!isset($_GET['token']) || empty($_GET['token'])) {
+                $order->update_status('failed', 'Invalid payment UID.');
+                wc_add_notice('Token is missing or invalid.', 'error');
+                exit;
+            }
+            
+            
+            if (!isset($_GET['payment_uid']) || empty($_GET['payment_uid'])) {
+                $order->update_status('failed', 'Invalid payment UID.');
+                wc_add_notice('Payment UID is missing or invalid.', 'error');
+                //wp_redirect(wc_get_checkout_url());
+                exit;
+            }
+            
+            $order_key = sanitize_text_field($_GET['key']);
+            $order_id = sanitize_text_field($_GET['wc_order']);
+            $token = sanitize_text_field($_GET['token']);
+            $payment_uid = sanitize_text_field($_GET['payment_uid']);
 
-                if ($order) {
-                    $payment_status = sanitize_text_field($_GET['status']); // Payment status from gateway
-                    $payment_hash = sanitize_text_field($_GET['payment_hash']); // Transaction ID from gateway
-                    $national_id = get_post_meta($order_id, '_billing_national_id', true);
-                    $hash_value = hash_hmac('sha256', $payment_uid, $this->hmac_secret_key);
+            $order = wc_get_order($order_id);
+            $order_status = $order->get_status();
+            $this->gateway->logger->debug('token' . $token, ['source' => 'moneyro-log']);
+            $this->gateway->logger->debug('payment_uid' . $payment_uid, ['source' => 'moneyro-log']);
 
-                    if (!isset($_GET['payment_hash']) || empty($_GET['payment_hash']))
-                    {
-                        $order->update_status('failed', 'Payment failed or canceled.');
-                        wc_add_notice('Payment failed. Please try again.', 'error');
-                    }
+            if ( ! $order || ! is_a( $order, 'WC_Order' ) ) {
+                wc_add_notice('Order not found or invalid.', 'error');
+                exit;
+            }
 
-                    if ($payment_status === 'success' && $payment_hash === $hash_value) {
+           // Ceck the payment status with moneyro end-point
 
-                        // Reduce stock levels
-                        wc_reduce_stock_levels( $order_id );
+           $invoice_response = wp_remote_post(
+                "{$this->gateway->gateway_api}/purchase_via_rial/invoices/{$payment_uid}",
+                array(
+                    'method'  => 'GET',
+                    'headers' => array(
+                        'Authorization' => "Bearer {$token}",
+                        'Content-Type'  => 'application/json',
+                    ),
+                )
+            );
 
-                        $order->payment_complete($transaction_id);
-                        $order->add_order_note('Payment completed via MoneyRo. Transaction ID: ' . $transaction_id);
-                        wc_add_notice('Payment successful!', 'success');
 
-                    } else {
-                        $order->update_status('failed', 'Payment failed or canceled.');
-                        wc_add_notice('Payment failed. Please try again.', 'error');
-                    }
-                    wc_clear_notices();
-                    // Redirect to order confirmation page
-                    wp_redirect($this->gateway->get_return_url($order));
+            if (is_wp_error($invoice_response)) {
+                $order->update_status('cancelled', 'Payment failed or canceled.');
+                wc_add_notice('Failed to get a response from payment server.', 'error');
+                $this->gateway->logger->debug('Failed to get a response from payment server. ' . $error_messages, ['source' => 'moneyro-log']);
+                exit;
+            }
+
+            $invoice_status_code = wp_remote_retrieve_response_code($invoice_response);
+            $invoice_detail = wp_remote_retrieve_body( $invoice_response );
+
+            if ($invoice_status_code !== 200) {
+
+                $invoice_detail = json_decode($invoice_detail, true);
+            
+                $error_message = isset($invoice_detail['detail']) ? esc_html($invoice_detail['detail']) : 'Unknown error';
+                $error_type = isset($invoice_detail['type']) ? esc_html($invoice_detail['type']) : 'Error type not specified';
+            
+                $this->gateway->logger->debug("Error: $error_message, Type: $error_type", ['source' => 'moneyro-log']);
+                $order->update_status('cancelled', 'Payment failed or canceled.');
+                wc_add_notice("Error: $error_message (Type: $error_type)", 'error');
+                
+                exit;
+            }
+
+
+            if ($invoice_status_code === 200) {
+                // Decode the JSON response to extract the fields
+                $invoice_detail = json_decode($invoice_detail, true);
+            
+
+                if ($invoice_detail['filled_at'] === null || $invoice_detail['filled_by'] === null) {
+                    $order->update_status('cancelled', 'Payment failed or canceled.');
+                    wc_add_notice('Payment was canceled.', 'notice');
                     exit;
                 }
+
+                // Extract filled_at and filled_by
+                $filled_at = $invoice_detail['filled_at'];
+                $filled_by = $invoice_detail['filled_by'];
+            
+                // Log the extracted values
+                $this->gateway->logger->debug("Filled At: $filled_at, Filled By: $filled_by", ['source' => 'moneyro-log']);
+            
+
+                wc_reduce_stock_levels( $order_id );
+
+                $order->payment_complete($transaction_id);
+                $order->add_order_note('Payment completed via MoneyRo. Transaction ID: ' . $transaction_id);
+                wc_add_notice('Payment successful!', 'success');
             }
-        
-            wc_add_notice('Order not found or invalid.', 'error');
-            wp_redirect(wc_get_checkout_url());
-            exit;
         }catch (Exception $e){
             $this->gateway->logger->error('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
         }  

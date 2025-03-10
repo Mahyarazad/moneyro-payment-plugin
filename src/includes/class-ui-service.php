@@ -280,7 +280,6 @@ class UIService {
                     });
                     </script>';
 
-                    $order->update_status('cancelled', 'Payment failed or canceled.');
 
                 }else{
                     // Get the payment UID from the order meta

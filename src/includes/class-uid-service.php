@@ -40,13 +40,9 @@ class UIDService {
                 // Generate UUID for this session
                 $uid = wp_generate_uuid4();
                 // Generate HMAC 
-                $payment_hash = hash_hmac('sha256', $uid, $this->hmac_secret_key);
-
                 $order->update_meta_data('_order_key', sanitize_text_field($this->transaction_service->generate_transaction_id()));
                 // Save UUID in the order meta
                 $order->update_meta_data('_payment_uid', sanitize_text_field($uid));
-                // Save UUID in the order meta
-                $order->update_meta_data('_payment_hash', sanitize_text_field($payment_hash));
                 // Save _payment_uid_creation_timestamp in the order meta
                 $order->update_meta_data('_payment_uid_creation_timestamp', sanitize_text_field(time()));
                 // Save _payment_uid_expiration_timestamp in the order meta
