@@ -135,6 +135,7 @@ class API_Service {
                 $order->payment_complete($transaction_id);
                 $order->add_order_note('Payment completed via MoneyRo. Transaction ID: ' . $transaction_id);
                 wc_add_notice('Payment successful!', 'success');
+                wp_redirect($this->gateway->get_return_url($order));
                 exit;
             }
         }catch (Exception $e){
