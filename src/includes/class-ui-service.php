@@ -152,10 +152,8 @@ class UIService {
 
     public function save_billing_national_id($order_id, $data) {
         try{
-            if (isset($_POST['billing_national_id'])) {
-                $national_id = sanitize_text_field($_POST['billing_national_id']);
-                update_post_meta($order_id, '_billing_national_id', $national_id);
-                $this->gateway->logger->debug('National Id updated in database' . $national_id, ['source' => 'moneyro-log']);
+            if (!empty($_POST['billing_national_id'])) {
+                update_post_meta($order_id, '_billing_national_id', sanitize_text_field($_POST['billing_national_id']));
             }
 
         }catch (Exception $e){
