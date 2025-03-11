@@ -8,179 +8,104 @@ if ( ! defined( 'ABSPATH' ) ) {
 class UIService {
 
     protected $gateway;
+    protected $moneyro_api_service;
 
     public function __construct($gateway) {
         $this->gateway = $gateway;
+        $this->moneyro_api_service = new MoneyroAPIService($gateway->getrate_api,$gateway->moneyro_settings_api);
     }
 
     public function enqueue_script() {
         if (is_checkout()) {
-            $gateway_id  = esc_js($this->id);
-            $getrate_api = esc_url($this->getrate_api);
-            $nonce       = wp_create_nonce('woocommerce-update-order-review');
-            $ajax_url    = esc_url(admin_url('admin-ajax.php'));
-            $total = WC()->cart->total;
-            $subtotal = WC()->cart->get_subtotal();
-
-            // Get the total tax amount
-            $taxes = WC()->cart->get_taxes_total();
-            
-            // Calculate the total including tax
-            $total_including_tax = $subtotal + $taxes;
+            $gateway_id = esc_js($this->id);
+    
+            // Get necessary data from the API and WooCommerce
+            $selling_rate = round($this->moneyro_api_service->fetch_currency_rates(), 0);
+            $initial_fee = $this->moneyro_api_service->fetch_purchase_via_rial_initial_fee();
+            $total_including_tax = WC()->cart->get_subtotal() + WC()->cart->get_taxes_total();
+            $new_total_with_shipment_cost = $total_including_tax * (($this->gateway->shipment_margin_rate + $this->gateway->gateway_margin_rate) / 100);
+            $new_total_with_shipment_cost_irr = $new_total_with_shipment_cost * $selling_rate;
+            $new_total = round($this->calculate__aed_total($total_including_tax, $selling_rate, $initial_fee), 1);
+    
             ?>
             <script type="text/javascript">
                 var moneyro_vars = {
-                    shipment_margin_rate: "<?php echo $this->gateway->shipment_margin_rate; ?>",
-                    gateway_margin_rate: "<?php echo $this->gateway->gateway_margin_rate; ?>",
                     gateway_id: "<?php echo $this->gateway->id; ?>",
-                    getrate_api: "<?php echo $this->gateway->getrate_api; ?>",
-                    moneyro_settings_api: "<?php echo $this->gateway->moneyro_settings_api; ?>",
-                    nonce: "<?php echo $nonce; ?>",
-                    ajax_url: "<?php echo $ajax_url; ?>",
-                    total_including_tax: <?php echo $total_including_tax; ?> ,
-                    total: <?php echo $total; ?> 
+                    total_including_tax: <?php echo $total_including_tax; ?>,
+                    new__total_with_shipment_cost: <?php echo $new_total_with_shipment_cost; ?>,
+                    new__total_with_shipment_cost_irr: <?php echo $new_total_with_shipment_cost_irr; ?>,
+                    new_total: <?php echo $new_total; ?>,
                 };
     
                 jQuery(function($) {
-                        // Hide the National ID field initially
-                        var total_including_tax = parseFloat(moneyro_vars.total_including_tax);
-                        function roundToOneDecimal(num) {
-                            return parseFloat(num.toFixed(1));
+                    function roundToOneDecimal(num) {
+                        return parseFloat(num.toFixed(1));
+                    }
+    
+                    function formatCurrency(value) {
+                        return parseFloat(value).toLocaleString('en-US');
+                    }
+    
+                    function toggleNationalIDField() {
+                        if ($('input[name="payment_method"]:checked').val() === moneyro_vars.gateway_id) {
+                            $('#billing_national_id_field').show();
+                        } else {
+                            $('#billing_national_id_field').hide();
                         }
-
-                        function formatCurrency(value) {
-                            // Split the value into the number and currency parts
-                            const parts = String(value).split(' ');
-                            const numberPart = parts[0];
-                            const currencyPart = parts[1];
-
-                            // Convert the number to a float, then format it with commas
-                            const formattedNumber = parseFloat(numberPart).toLocaleString('en-US');
-
-                            // Return the formatted string with currency
-                            return `${formattedNumber}`;
-                        }
-
-
-
-                        function toggleNationalIDField() {
-                            var selectedPaymentMethod = $('input[name="payment_method"]:checked').val();
-                            // Check if the Moneyro payment method is selected
-                            if (selectedPaymentMethod === moneyro_vars.gateway_id) {
-                                $('#billing_national_id_field').show(); // Show National ID field
-                            } else {
-                                $('#billing_national_id_field').hide(); // Hide National ID field
+                    }
+    
+                    function updateShippingCost() {
+                        var selectedPaymentMethod = $('input[name="payment_method"]:checked').val();
+                        var shippingLabel = $(".woocommerce-shipping-totals td .woocommerce-Price-amount.amount bdi");
+                        var totalLabel = $(".order-total td .woocommerce-Price-amount.amount bdi");
+    
+                        if (selectedPaymentMethod === moneyro_vars.gateway_id) {
+                            if (shippingLabel.length) {
+                                shippingLabel.html(`${roundToOneDecimal(moneyro_vars.new__total_with_shipment_cost)}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
                             }
-
-                        }
-                        
-
-                        function updateShippingCost() {
-                            var selectedPaymentMethod = $('input[name="payment_method"]:checked').val();
-                            var shippingElement = $('.woocommerce-Price-amount bdi');
-                            var shippingLabel = $(".woocommerce-shipping-totals td .woocommerce-Price-amount.amount bdi");
-                            var totalLabel = $(".order-total td .woocommerce-Price-amount.amount bdi");
-                            
-                            var purchase_via_rial_initial_fee = 0;
-
-                            if (selectedPaymentMethod === moneyro_vars.gateway_id) {
-                                var rate_settings = {
-                                    "url": moneyro_vars.getrate_api,
-                                    "method": "GET",   
-                                };
-
-                                var gateway_settings = {
-                                    "url": moneyro_vars.moneyro_settings_api,
-                                    "method": "GET",   
-                                };
-
-                                var purchase_via_rial_initial_fee = 20000;
-                                var settings = {
-                                    "url": moneyro_vars.moneyro_settings_api,
-                                    "method": "GET",
-                                    "dataType": "json",
-                                    "crossDomain": true,  
-                                    "xhrFields": {
-                                        "withCredentials": true 
-                                    }
-                                };
-
-                                $.ajax(settings).done(function(response) {
-                                    console.log(response);
-                                    var settings = response.results.filter(item => item.setting_key === "purchase_via_rial_initial_fee");
-                                    purchase_via_rial_initial_fee = parseInt(settings[0].setting_value);
-                                    console.log('purchase_via_rial_initial_fee', purchase_via_rial_initial_fee);
-
-                                }).fail(function(jqXHR, textStatus, errorThrown) {
-                                    console.error("Error: " + textStatus, errorThrown);
-                                });
-
-
-                                $.ajax(rate_settings).done(function (response) 
-                                {
-                                    var selling_rate = parseInt(response.AED.when_selling_currency_to_user.change_in_rial);
-                                    var new_shipping_cost = total_including_tax * ((parseInt(moneyro_vars.shipment_margin_rate) + parseInt(moneyro_vars.gateway_margin_rate)) / 100);
-                                    var new_shipping_cost_irr = new_shipping_cost * selling_rate;
-                                    var user_pay_amount =  Math.ceil(total_including_tax * ((parseInt(moneyro_vars.shipment_margin_rate) + parseInt(moneyro_vars.gateway_margin_rate) + 100) / 100) * selling_rate) + purchase_via_rial_initial_fee;
-                                    var user_pay_amount_for_ui = roundToOneDecimal(user_pay_amount / selling_rate);
-
-                                    if (shippingLabel.length) {
-                                        shippingLabel.html(`${roundToOneDecimal(new_shipping_cost)}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
-                                    }
-                                    if (totalLabel.length) {
-                                        totalLabel.html(`${user_pay_amount_for_ui}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
-                                    }
-
-                                    if ($('.dgland-shipping-info').length === 0) {
-                                        var newRow = `
-                                            <tr class="dgland-shipping-info">
-                                                <th>Shipping Fee in IRR</th>
-                                                <td><span class="woocommerce-Price-amount amount"><bdi>${formatCurrency(new_shipping_cost_irr)}&nbsp;<span class="woocommerce-Price-currencySymbol">IRR</span></bdi></span></td>
-                                            </tr>`;
-                                        $('.woocommerce-shipping-totals.shipping').after(newRow);
-                                    }
-                                   
-                                }).fail(function (jqXHR, textStatus, errorThrown) {
-                                    // Handle any errors here
-                                    window.alert('AJAX error:', textStatus, errorThrown);
-                                });;
-  
-                            }else{
-                                if ($('.dgland-shipping-info').length) {
-                                    $('.dgland-shipping-info').remove();
-                                }
-                                
-                                shippingLabel.html(`11&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
-                                totalLabel.html(`${moneyro_vars.total}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
-                               
+                            if (totalLabel.length) {
+                                totalLabel.html(`${moneyro_vars.new_total}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
                             }
+    
+                            if ($('.dgland-shipping-info').length === 0) {
+                                var newRow = `
+                                    <tr class="dgland-shipping-info">
+                                        <th>Shipping Fee in IRR</th>
+                                        <td><span class="woocommerce-Price-amount amount"><bdi>${formatCurrency(moneyro_vars.new__total_with_shipment_cost_irr)}&nbsp;<span class="woocommerce-Price-currencySymbol">IRR</span></bdi></span></td>
+                                    </tr>`;
+                                $('.woocommerce-shipping-totals.shipping').after(newRow);
+                            }
+                        } else {
+                            if ($('.dgland-shipping-info').length) {
+                                $('.dgland-shipping-info').remove();
+                            }
+    
+                            shippingLabel.html(`11&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
+                            totalLabel.html(`${moneyro_vars.total_including_tax}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
                         }
-                        
-                        // Trigger the toggle function on payment method change
-                        $('form.checkout').on('change', 'input[name="payment_method"]', function() {
-                            toggleNationalIDField();
-                            updateShippingCost();
-                        });
-                        
-                        
+                    }
+    
+                    $('form.checkout').on('change', 'input[name="payment_method"]', function() {
                         toggleNationalIDField();
                         updateShippingCost();
-
-                        $(document).ajaxComplete(function(event, xhr, settings) {
-                            // Check if the request was for updating the order review
-                            if (settings.url.indexOf('wc-ajax=update_order_review') !== -1) {
-                                toggleNationalIDField();
-                                updateShippingCost();
-                            }
-                        });
-
                     });
-                </script>
+    
+                    toggleNationalIDField();
+                    updateShippingCost();
+    
+                    // Do not remove these
+                    $(document).ajaxComplete(function(event, xhr, settings) {
+                        if (settings.url.indexOf('wc-ajax=update_order_review') !== -1) {
+                            toggleNationalIDField();
+                            updateShippingCost();
+                        }
+                    });
+                });
+            </script>
             <?php
-
-            unset($gateway_id, $getrate_api, $nonce, $ajax_url, $subtotal, $taxes, $total);
         }
     }
+    
     
     public function validate_national_id_field($data, $errors) {
         if (MONEYRO_PAYMENT_GATEWAY_ID === WC()->session->get('chosen_payment_method')) {
@@ -315,5 +240,13 @@ class UIService {
        
     }
 
+    
+    private function calculate__aed_total($total_including_tax, $selling_rate, $initial_fee){
+
+        $new__total_with_shipment_cost = $total_including_tax * ((100 + $this->gateway->shipment_margin_rate + $this->gateway->gateway_margin_rate) / 100); 
+
+        return  ceil($new__total_with_shipment_cost);
+    }
+    
 }
 ?>

@@ -42,7 +42,7 @@ class WC_Moneyro_Payment_Gateway extends WC_Payment_Gateway {
         $this->gateway_margin_rate      = $this->get_option('gateway_margin_rate');
         $this->moneyro_settings_api     = $this->get_option('moneyro_settings_api');
 
-        // Initialize Payment Service
+        // Initialize Services
         $this->payment_service = new Payment_Service($this);
         $this->ui_service = new UIService($this);
         $this->api_service = new API_Service($this);

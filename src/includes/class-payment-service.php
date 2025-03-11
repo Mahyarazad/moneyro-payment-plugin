@@ -5,10 +5,13 @@ if (!defined('ABSPATH')) {
 }
 
 class Payment_Service {
+
     protected $gateway;
+    protected $moneyro_api_service;
 
     public function __construct($gateway) {
         $this->gateway = $gateway;
+        $this->moneyro_api_service = new MoneyroAPIService($gateway->getrate_api,$gateway->moneyro_settings_api);
     }
 
     public function process_payment( $order_id ) {
@@ -56,17 +59,7 @@ class Payment_Service {
                 return;
             }
 
-
-            $get_rates = wp_remote_get(
-                $this->gateway->getrate_api
-            );
-
-            if ( is_wp_error( $get_rates ) ) {
-                wc_add_notice('Failed to get current rates from payment server.', 'error');
-                return;
-            }
-
-            $result = $this->update_order_shipping($order_id, $get_rates);
+            $result = $this->update_order_shipping($order_id);
 
 
             $auth_response = wp_remote_post(
@@ -203,10 +196,9 @@ class Payment_Service {
         }  
     }
 
-    private function update_order_shipping($order_id, $get_rates) {
-        $rates_detail = json_decode(wp_remote_retrieve_body($get_rates), true);
-        $selling_rate = $rates_detail['AED']['when_selling_currency_to_user']['change_in_rial'];
-    
+    private function update_order_shipping($order_id) {
+
+        $selling_rate = round($this->moneyro_api_service->fetch_currency_rates(),0);
 
         $order = wc_get_order($order_id);
         $shipping_total = $order->get_shipping_total();
@@ -221,7 +213,7 @@ class Payment_Service {
         $new__total_with_shipment_cost = $total_including_tax * ((100 + $this->gateway->shipment_margin_rate) / 100); 
 
         $new_total = ceil($new__total_with_shipment_cost);
-        $new_total_irr = ceil($new_total * ((100 + $this->gateway->gateway_margin_rate) / 100 ) * $selling_rate) + 20000; 
+        $new_total_irr = ceil($new_total * ((100 + $this->gateway->gateway_margin_rate) / 100 ) * $selling_rate) + $this->moneyro_api_service->fetch_purchase_via_rial_initial_fee(); 
         
         $this->gateway->logger->debug('taxes ' . $taxes, ['source' => 'moneyro-log']);
         $this->gateway->logger->debug('subtotal ' . $subtotal, ['source' => 'moneyro-log']);
