@@ -177,9 +177,6 @@ class Payment_Service {
 
             $order->save();
 
-            // Remove cart
-            WC()->cart->empty_cart();
-
             // Unset temporary variables here
             unset($order, $current_time, $expiration_timestamp, $uid, $new_uid, $transaction_id);
             unset($order_national_id, $get_rates, $result, $auth_response, $auth_status_code, $auth_data, $token);

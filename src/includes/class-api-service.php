@@ -16,13 +16,13 @@ class API_Service {
      * Handle the callback from the payment gateway.
      */
 
-    //  http://localhost/digi/wc-api/moneyro_payment_gateway?wc_order=4129&status=success&payment_hash=751e1f03ddb1d4fddae87747a849611bced1f219f61287fd4d40a2922383c2e0
-    //  
     public function return_from_gateway() {
-        $this->gateway->logger->debug('return_from_gateway_trigered' , ['source' => 'moneyro-log']);
+        
         try{
             
             if ( !isset($_GET['wc_order']) || empty($_GET['wc_order']) ) {
+                // Remove cart
+                WC()->cart->empty_cart();
                 $order->update_status('failed', 'Invalid payment UID.');
                 wc_add_notice('Order ID is missing or invalid.', 'error');
                 wp_redirect(wc_get_checkout_url());
@@ -30,6 +30,8 @@ class API_Service {
             }
             
             if (!isset($_GET['token']) || empty($_GET['token'])) {
+                // Remove cart
+                WC()->cart->empty_cart();
                 $order->update_status('failed', 'Invalid payment UID.');
                 wc_add_notice('Token is missing or invalid.', 'error');
                 wp_redirect(wc_get_checkout_url());
@@ -38,6 +40,8 @@ class API_Service {
             
             
             if (!isset($_GET['payment_uid']) || empty($_GET['payment_uid'])) {
+                // Remove cart
+                WC()->cart->empty_cart();
                 $order->update_status('failed', 'Invalid payment UID.');
                 wc_add_notice('Payment UID is missing or invalid.', 'error');
                 wp_redirect(wc_get_checkout_url());
@@ -57,6 +61,8 @@ class API_Service {
             
 
             if ( ! $order || ! is_a( $order, 'WC_Order' ) ) {
+                // Remove cart
+                WC()->cart->empty_cart();
                 wc_add_notice('Order not found or invalid.', 'error');
                 wp_redirect(wc_get_checkout_url());
                 exit;
@@ -123,7 +129,9 @@ class API_Service {
                 $this->gateway->logger->debug("Filled At: $filled_at, Filled By: $filled_by", ['source' => 'moneyro-log']);
             
                 wc_reduce_stock_levels( $order_id );
-
+                // Remove cart
+                WC()->cart->empty_cart();
+                
                 $order->payment_complete($transaction_id);
                 $order->add_order_note('Payment completed via MoneyRo. Transaction ID: ' . $transaction_id);
                 wc_add_notice('Payment successful!', 'success');
