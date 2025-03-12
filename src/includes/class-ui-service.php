@@ -214,7 +214,11 @@ class UIService {
                                     if (orderDetailsList) {
                                         const nationalIdItem = document.createElement("li");
                                         nationalIdItem.classList.add("woocommerce-order-overview__national-id");
-                                        nationalIdItem.innerHTML = `Payment UID: <strong>' . esc_html($uid) . '</strong>`;
+                                        nationalIdItem.innerHTML = `Payment Invoice: 
+                                            <strong>
+                                                <a href="' . esc_url( $this->gateway->gateway_baseUrl . '/invoice-preview/' . $payment_uid ) . '">' . __( 'View Invoice', 'woocommerce' ) . '</a>
+                                            </strong>
+                                        `;
                                         orderDetailsList.appendChild(nationalIdItem);
                                     }
                                 });
@@ -248,9 +252,12 @@ class UIService {
                         var tableFooter = document.querySelector(".woocommerce-table tfoot");
                         if (tableFooter) {
                             var paymentUidRow = document.createElement("tr");
-                            paymentUidRow.innerHTML = `<th scope=\"row\">Payment Invoice:</th><td><strong>
-                            <a href="' . esc_url( $this->gateway->gateway_baseUrl . '/invoice-preview/' . $payment_uid ) . '">' . __( 'View Invoice', 'woocommerce' ) . '</a>
-                            </strong></td>`;
+                            paymentUidRow.innerHTML = `
+                            <th scope=\"row\">Payment Invoice:</th><td>
+                                <strong>
+                                    <a href="' . esc_url( $this->gateway->gateway_baseUrl . '/invoice-preview/' . $payment_uid ) . '">' . __( 'View Invoice', 'woocommerce' ) . '</a>
+                                </strong>
+                            </td>`;
                             
                             var totalRow = tableFooter.querySelector("tr:last-child");
                             if (totalRow) {
@@ -267,9 +274,6 @@ class UIService {
         $new__total_with_shipment_cost = $total_including_tax * ((100 + $this->gateway->shipment_margin_rate + $this->gateway->gateway_margin_rate) / 100); 
 
         return  ceil($new__total_with_shipment_cost);
-    }
-
-
-    
+    }  
 }
 ?>
