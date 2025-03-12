@@ -57,28 +57,6 @@ class UIDService {
             $this->logger->error('Exception: ' . $e->getMessage(), ['source' => 'moneyro-log']);
         } 
     }
-
-    public function display_order_uid_on_account_page($order) {
-        // Get the Order UID from the order meta
-        $order_uid = get_post_meta($order->get_id(), '_payment_uid', true);
-                
-        // Check if the UID exists and display it
-        if ($order_uid) {
-            echo '<script>
-                    document.addEventListener("DOMContentLoaded", function() {
-                        var tableFooter = document.querySelector(".woocommerce-table tfoot");
-                        if (tableFooter) {
-                            var paymentUidRow = document.createElement("tr");
-                            paymentUidRow.innerHTML = `<th scope=\"row\">Payment UID:</th><td>' . esc_html($order_uid) . '</td>`;
-                            
-                            var totalRow = tableFooter.querySelector("tr:last-child");
-                            if (totalRow) {
-                                tableFooter.insertBefore(paymentUidRow, totalRow);
-                            }
-                        }
-                    });
-                </script>';
-        }
-    }
+   
 }
 ?>

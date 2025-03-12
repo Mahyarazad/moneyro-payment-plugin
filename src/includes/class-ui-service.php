@@ -229,8 +229,7 @@ class UIService {
     }
 
     function add_custom_order_data($order) {
-        // $this->gateway->logger->debug('Adding custom order data' . $order, ['source' => 'moneyro-log']);
-        // ;
+
         $payment_uid = $order->get_meta('_payment_uid');
         echo '<p><strong>' . __( 'Payment Method:', 'woocommerce' ) . '</strong> ' . esc_html( $order->get_meta( '_payment_method') ) . '</p>';
         echo '<p><strong>' . __( 'Payment UID:', 'woocommerce' ) . '</strong> ' . esc_html( $payment_uid ) . '</p>';
@@ -239,12 +238,38 @@ class UIService {
     }
 
     
+    public function display_order_uid_on_account_page($order) {
+        
+        $payment_uid = $order->get_meta('_payment_uid');
+                
+        if ($payment_uid) {
+            echo '<script>
+                    document.addEventListener("DOMContentLoaded", function() {
+                        var tableFooter = document.querySelector(".woocommerce-table tfoot");
+                        if (tableFooter) {
+                            var paymentUidRow = document.createElement("tr");
+                            paymentUidRow.innerHTML = `<th scope=\"row\">Payment Invoice:</th><td><strong>
+                            <a href="' . esc_url( $this->gateway->gateway_baseUrl . '/invoice-preview/' . $payment_uid ) . '">' . __( 'View Invoice', 'woocommerce' ) . '</a>
+                            </strong></td>`;
+                            
+                            var totalRow = tableFooter.querySelector("tr:last-child");
+                            if (totalRow) {
+                                tableFooter.insertBefore(paymentUidRow, totalRow);
+                            }
+                        }
+                    });
+                </script>';
+        }
+    }
+
     private function calculate__aed_total($total_including_tax, $selling_rate, $initial_fee){
 
         $new__total_with_shipment_cost = $total_including_tax * ((100 + $this->gateway->shipment_margin_rate + $this->gateway->gateway_margin_rate) / 100); 
 
         return  ceil($new__total_with_shipment_cost);
     }
+
+
     
 }
 ?>
