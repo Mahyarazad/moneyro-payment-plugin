@@ -18,7 +18,7 @@ class UIService {
     public function enqueue_script() {
         if (is_checkout()) {
             $gateway_id = esc_js($this->id);
-    
+            $default_shipment_cost = WC()->cart->get_shipping_total();
             // Get necessary data from the API and WooCommerce
             $selling_rate = round($this->moneyro_api_service->fetch_currency_rates(), 0);
             $initial_fee = $this->moneyro_api_service->fetch_purchase_via_rial_initial_fee();
@@ -34,6 +34,7 @@ class UIService {
                     total_including_tax: <?php echo $total_including_tax; ?>,
                     new__total_with_shipment_cost: <?php echo $new_total_with_shipment_cost; ?>,
                     new__total_with_shipment_cost_irr: <?php echo $new_total_with_shipment_cost_irr; ?>,
+                    default_shipment_cost: <?php echo $default_shipment_cost; ?>,
                     new_total: <?php echo $new_total; ?>,
                 };
     
@@ -79,9 +80,10 @@ class UIService {
                             if ($('.dgland-shipping-info').length) {
                                 $('.dgland-shipping-info').remove();
                             }
-    
-                            shippingLabel.html(`11&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
-                            totalLabel.html(`${moneyro_vars.total_including_tax}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
+
+                            shippingLabel.html(`${moneyro_vars.default_shipment_cost}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
+                            
+                            totalLabel.html(`${moneyro_vars.total_including_tax + moneyro_vars.default_shipment_cost}&nbsp;<span class="woocommerce-Price-currencySymbol">AED</span>`);
                         }
                     }
     
