@@ -16,9 +16,12 @@ class UIService {
     }
 
     public function enqueue_script() {
+
+
         if (is_checkout()) {
             $gateway_id = esc_js($this->id);
-            $default_shipment_cost = WC()->cart->get_shipping_total();
+            
+            $default_shipment_cost = $this->gateway->get_available_shipping_methods()['cost'];
             // Get necessary data from the API and WooCommerce
             $selling_rate = round($this->moneyro_api_service->fetch_currency_rates(), 0);
             $initial_fee = $this->moneyro_api_service->fetch_purchase_via_rial_initial_fee();
@@ -179,6 +182,7 @@ class UIService {
             $order = wc_get_order($order_id);
             $order_status = $order->get_status();
             $this->gateway->logger->debug('order_status => ' . $order_status, ['source' => 'moneyro-log']);
+            WC()->cart->empty_cart();
             if (MONEYRO_PAYMENT_GATEWAY_ID === $order->get_payment_method()) {
 
                if($order_status === 'pending' || $order_status === 'cancelled'){

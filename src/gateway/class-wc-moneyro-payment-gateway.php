@@ -77,6 +77,46 @@ class WC_Moneyro_Payment_Gateway extends WC_Payment_Gateway {
         
     }
     
+    public function get_available_shipping_methods() {
+        $package = array(
+            'destination' => array(
+                'country'  => 'AE',
+                'state'    => '',
+                'postcode' => '',
+                'city'     => '',
+                'address'  => '',
+                'address_2'=> ''
+            ),
+            'contents'        => array(),
+            'contents_cost'   => WC()->cart ? WC()->cart->get_subtotal() : 0,
+            'applied_coupons' => WC()->cart ? WC()->cart->get_applied_coupons() : array(),
+            'user'            => array(
+                'ID' => get_current_user_id(),
+            )
+        );
+
+        $shipping = new WC_Shipping();
+        $shipping->load_shipping_methods();
+
+        $zone = WC_Shipping_Zones::get_zone_matching_package($package);
+        $shipping_methods = $zone->get_shipping_methods(true);
+
+        $result = [];
+
+        // Todo: this should be selected by administrator or user depends on the business logic
+        foreach ($shipping_methods as $method) {
+            if ($method->enabled === 'yes' && $method->id === 'flat_rate') {
+                return array(
+                    'method' => $method->get_title(),
+                    'cost'   => isset($method->cost) ? $method->cost : 'N/A'
+                );
+            }
+        }
+    
+        // Return null if flat rate is not found
+        return null;
+    }
+
     public function process_payment($order_id) {
         return $this->payment_service->process_payment($order_id);
     }
